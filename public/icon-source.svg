@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="Lian VPN logo">
+  <rect width="1024" height="1024" fill="#000000" />
+  <circle cx="512" cy="354" r="226" fill="#ff9715" />
+  <circle cx="512" cy="354" r="189" fill="#000000" />
+  <path
+    fill="#0d2d3b"
+    d="M389 316c0-84 68-152 152-152s152 68 152 152v188H389V316Z"
+  />
+  <path
+    fill="#39c2d9"
+    d="M294 446c82-31 137-69 197-112 86-61 173-82 251-43-49 0-81 33-81 76 0 66 81 101 181 65-40 68-116 120-230 120-90 0-150-28-210-51-37-14-72-24-108-28Z"
+  />
+  <path
+    fill="#1599ad"
+    d="M280 534c74-37 149-45 225-22 60 18 118 52 203 59 88 7 154-12 213-44-38 72-118 121-243 121H375c-39-28-71-67-95-114Z"
+  />
+  <circle cx="648" cy="406" r="67" fill="#0d2d3b" />
+  <text
+    x="512"
+    y="785"
+    fill="#f5f4f8"
+    font-family="Arial, Helvetica, sans-serif"
+    font-size="198"
+    font-weight="700"
+    letter-spacing="8"
+    text-anchor="middle"
+  >
+    LIAN
+  </text>
+  <text
+    x="512"
+    y="890"
+    fill="#f5f4f8"
+    font-family="Arial, Helvetica, sans-serif"
+    font-size="100"
+    font-weight="700"
+    letter-spacing="6"
+    text-anchor="middle"
+  >
+    VPN
+  </text>
+</svg>

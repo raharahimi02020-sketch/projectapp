@@ -13,7 +13,7 @@ import {
   languageOptions,
   type AppLanguage,
 } from './i18n'
-import { getTelegramUser, initTelegramShell, pulseTelegram } from './lib/telegram'
+import { getTelegramUser, initTelegramShell, isAdminUser, pulseTelegram } from './lib/telegram'
 import {
   loadPersistentState,
   savePersistentState,
@@ -523,6 +523,7 @@ const readReceiptImage = (file: File) =>
 
 function App() {
   const telegramUser = getTelegramUser()
+  const isAdmin = isAdminUser(telegramUser?.id)
   const [state, setState] = useState(() => loadPersistentState(telegramUser))
   const [language, setLanguage] = useState<AppLanguage>(() => {
     try {
@@ -1932,9 +1933,11 @@ function App() {
       </section>
 
       <section className="content-section">
-        <button className="primary-button full-width" onClick={() => switchScreen('admin')}>
-          {tr('Open admin console')}
-        </button>
+        {isAdmin ? (
+          <button className="primary-button full-width" onClick={() => switchScreen('admin')}>
+            {tr('Open admin console')}
+          </button>
+        ) : null}
       </section>
     </>
   )
@@ -3131,7 +3134,7 @@ function App() {
         {screen === 'services' && renderServices()}
         {screen === 'support' && renderSupport()}
         {screen === 'profile' && renderProfile()}
-        {screen === 'admin' && renderAdmin()}
+        {screen === 'admin' && isAdmin && renderAdmin()}
       </main>
 
       <nav className="bottom-nav">

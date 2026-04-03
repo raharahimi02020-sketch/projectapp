@@ -37,9 +37,17 @@ declare global {
   }
 }
 
+const ADMIN_IDS: number[] = (import.meta.env.VITE_ADMIN_IDS ?? '8461153976')
+  .split(',')
+  .map(Number)
+  .filter(Boolean)
+
 export const getTelegramWebApp = () => window.Telegram?.WebApp
 
 export const getTelegramUser = () => getTelegramWebApp()?.initDataUnsafe?.user
+
+export const isAdminUser = (userId?: number): boolean =>
+  userId !== undefined && ADMIN_IDS.includes(userId)
 
 export const initTelegramShell = () => {
   const app = getTelegramWebApp()

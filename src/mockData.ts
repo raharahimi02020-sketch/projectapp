@@ -19,17 +19,17 @@ const isoDaysFromNow = (days: number) => {
 }
 
 const createProfile = (telegramUser?: TelegramUserProfile): UserProfile => ({
-  id: 'user_local_01',
-  firstName: telegramUser?.first_name ?? 'Arad',
-  username: telegramUser?.username ?? 'arad_secure',
+  id: telegramUser?.id ? String(telegramUser.id) : 'user_local_01',
+  firstName: telegramUser?.first_name ?? 'کاربر',
+  username: telegramUser?.username ?? 'user',
   avatarUrl: telegramUser?.photo_url,
   city: 'Tehran',
   preferredRegion: 'Germany',
-  walletCredit: 180000,
-  referralCode: 'SAFE-7X19',
-  referrals: 14,
+  walletCredit: 0,
+  referralCode: `LIAN-${Math.random().toString(36).slice(2, 8).toUpperCase()}`,
+  referrals: 0,
   premium: Boolean(telegramUser?.is_premium),
-  memberSince: '2024-11-08T12:00:00.000Z',
+  memberSince: new Date().toISOString(),
 })
 
 const plans: Plan[] = [
@@ -123,68 +123,9 @@ const plans: Plan[] = [
   },
 ]
 
-const services: UserService[] = [
-  {
-    id: 'svc_001',
-    planId: 'stream-90',
-    planName: 'Stream 90',
-    status: 'expiring',
-    expiresAt: isoDaysFromNow(5),
-    devicesInUse: 2,
-    deviceLimit: 4,
-    region: 'Germany',
-    protocol: 'Reality',
-    configCode: 'LIAN://VLESS/arad_secure/deu-4c9x2',
-    orderId: 'ord_002',
-    latency: 41,
-    uptime: '99.94%',
-  },
-]
+const services: UserService[] = []
 
-const tickets: SupportTicket[] = [
-  {
-    id: 'tkt_001',
-    title: 'Slow route on mobile network',
-    category: 'speed',
-    status: 'pending',
-    lastMessageAt: isoDaysFromNow(-1),
-    messages: [
-      {
-        id: 'msg_001',
-        from: 'user',
-        text: 'Latency jumps when I switch from Wi-Fi to mobile data.',
-        timestamp: isoDaysFromNow(-2),
-      },
-      {
-        id: 'msg_002',
-        from: 'support',
-        text: 'We moved your profile to the Frankfurt low-jitter route. Test again and tell us if it improved.',
-        timestamp: isoDaysFromNow(-1),
-      },
-    ],
-  },
-  {
-    id: 'tkt_002',
-    title: 'Invoice request for annual package',
-    category: 'billing',
-    status: 'resolved',
-    lastMessageAt: isoDaysFromNow(-4),
-    messages: [
-      {
-        id: 'msg_003',
-        from: 'user',
-        text: 'Send me the paid invoice for accounting.',
-        timestamp: isoDaysFromNow(-5),
-      },
-      {
-        id: 'msg_004',
-        from: 'support',
-        text: 'Invoice was generated and sent to your Telegram inbox.',
-        timestamp: isoDaysFromNow(-4),
-      },
-    ],
-  },
-]
+const tickets: SupportTicket[] = []
 
 const servers: Server[] = [
   {
@@ -253,29 +194,14 @@ const campaigns: Campaign[] = [
     reward: '10% off',
     active: true,
   },
-  {
-    id: 'cmp_003',
-    title: 'Family switch',
-    description: 'Move to a shared package with a higher bundle discount.',
-    code: 'DUO25',
-    discountPercent: 25,
-    reward: '25% off',
-    active: false,
-  },
 ]
 
 const notices: Notice[] = [
   {
     id: 'ntc_001',
-    title: 'Tonight maintenance window',
-    message: 'Netherlands route rotation starts at 01:00 and should finish in under 15 minutes.',
-    tone: 'amber',
-  },
-  {
-    id: 'ntc_002',
-    title: 'New low-ping route',
-    message: 'Frankfurt gaming route is live for Stream and Unlimited plans.',
-    tone: 'ice',
+    title: 'خوش آمدید به Lian VPN',
+    message: 'برای شروع یکی از پلن‌ها رو انتخاب کن و اتصال امن داشته باش.',
+    tone: 'lime',
   },
 ]
 
@@ -300,51 +226,9 @@ const faqs: FAQItem[] = [
     question: 'What happens after the subscription ends?',
     answer: 'The service status changes to expired, but your order history stays visible and you can renew with one tap.',
   },
-  {
-    id: 'faq_005',
-    question: 'Can I share a family plan?',
-    answer: 'Family plans are made for multiple devices and shared usage, but they still have a defined device ceiling.',
-  },
 ]
 
-const customers: CustomerSnapshot[] = [
-  {
-    id: 'user_local_01',
-    name: 'Arad Secure',
-    handle: '@arad_secure',
-    city: 'Tehran',
-    activePlan: 'Stream 90',
-    status: 'expiring',
-    lifetimeValue: 978000,
-  },
-  {
-    id: 'cust_002',
-    name: 'Nima Host',
-    handle: '@nimanet',
-    city: 'Tabriz',
-    activePlan: 'Unlimited 365',
-    status: 'active',
-    lifetimeValue: 1499000,
-  },
-  {
-    id: 'cust_003',
-    name: 'Sara Mesh',
-    handle: '@sara_mesh',
-    city: 'Shiraz',
-    activePlan: 'Family 180',
-    status: 'active',
-    lifetimeValue: 899000,
-  },
-  {
-    id: 'cust_004',
-    name: 'Kian Trial',
-    handle: '@kiantest',
-    city: 'Rasht',
-    activePlan: 'Starter 30',
-    status: 'trial',
-    lifetimeValue: 0,
-  },
-]
+const customers: CustomerSnapshot[] = []
 
 export const createInitialState = (
   telegramUser?: TelegramUserProfile,
@@ -352,19 +236,7 @@ export const createInitialState = (
   profile: createProfile(telegramUser),
   plans,
   services,
-  orders: [
-    {
-      id: 'ord_002',
-      planId: 'stream-90',
-      planName: 'Stream 90',
-      amount: 489000,
-      status: 'paid',
-      paymentMethod: 'card',
-      kind: 'purchase',
-      createdAt: isoDaysFromNow(-25),
-      promoCode: 'SAFE20',
-    },
-  ],
+  orders: [],
   tickets,
   servers,
   campaigns,

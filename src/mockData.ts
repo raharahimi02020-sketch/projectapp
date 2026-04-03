@@ -12,12 +12,6 @@ import type {
   UserService,
 } from './types'
 
-const isoDaysFromNow = (days: number) => {
-  const date = new Date()
-  date.setDate(date.getDate() + days)
-  return date.toISOString()
-}
-
 const createProfile = (telegramUser?: TelegramUserProfile): UserProfile => ({
   id: telegramUser?.id ? String(telegramUser.id) : 'user_local_01',
   firstName: telegramUser?.first_name ?? 'کاربر',

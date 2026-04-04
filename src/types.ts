@@ -1,4 +1,4 @@
-export type Screen = 'home' | 'plans' | 'services' | 'support' | 'profile' | 'admin'
+export type Screen = 'landing' | 'home' | 'plans' | 'services' | 'support' | 'profile' | 'admin'
 
 export type PlanCategory =
   | 'starter'
@@ -83,6 +83,11 @@ export interface Order {
   receiptImage?: string
   receiptFileName?: string
   receiptUploadedAt?: string
+  user?: {
+    telegramId?: number
+    firstName: string
+    username: string
+  }
 }
 
 export interface TicketMessage {

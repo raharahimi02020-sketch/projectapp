@@ -118,115 +118,35 @@ const plans: Plan[] = [
 ]
 
 const services: UserService[] = []
-
 const tickets: SupportTicket[] = []
 
 const servers: Server[] = [
-  {
-    id: 'srv_001',
-    city: 'Frankfurt',
-    country: 'Germany',
-    latency: 38,
-    load: 46,
-    status: 'online',
-    protocols: ['Reality', 'Hysteria'],
-  },
-  {
-    id: 'srv_002',
-    city: 'Amsterdam',
-    country: 'Netherlands',
-    latency: 44,
-    load: 53,
-    status: 'online',
-    protocols: ['VLESS', 'Reality'],
-  },
-  {
-    id: 'srv_003',
-    city: 'Istanbul',
-    country: 'Turkey',
-    latency: 61,
-    load: 79,
-    status: 'busy',
-    protocols: ['VLESS'],
-  },
-  {
-    id: 'srv_004',
-    city: 'Dubai',
-    country: 'UAE',
-    latency: 69,
-    load: 41,
-    status: 'online',
-    protocols: ['Reality', 'TUIC'],
-  },
-  {
-    id: 'srv_005',
-    city: 'Helsinki',
-    country: 'Finland',
-    latency: 52,
-    load: 14,
-    status: 'maintenance',
-    protocols: ['Hysteria'],
-  },
+  { id: 'srv_001', city: 'Frankfurt', country: 'Germany', latency: 38, load: 46, status: 'online', protocols: ['Reality', 'Hysteria'] },
+  { id: 'srv_002', city: 'Amsterdam', country: 'Netherlands', latency: 44, load: 53, status: 'online', protocols: ['VLESS', 'Reality'] },
+  { id: 'srv_003', city: 'Istanbul', country: 'Turkey', latency: 61, load: 79, status: 'busy', protocols: ['VLESS'] },
+  { id: 'srv_004', city: 'Dubai', country: 'UAE', latency: 69, load: 41, status: 'online', protocols: ['Reality', 'TUIC'] },
+  { id: 'srv_005', city: 'Helsinki', country: 'Finland', latency: 52, load: 14, status: 'maintenance', protocols: ['Hysteria'] },
 ]
 
 const campaigns: Campaign[] = [
-  {
-    id: 'cmp_001',
-    title: 'First order launch',
-    description: 'Get a direct discount on your first paid order.',
-    code: 'SAFE20',
-    discountPercent: 20,
-    reward: '20% off',
-    active: true,
-  },
-  {
-    id: 'cmp_002',
-    title: 'Renewal week',
-    description: 'Extra discount if your active service is near expiry.',
-    code: 'RENEW10',
-    discountPercent: 10,
-    reward: '10% off',
-    active: true,
-  },
+  { id: 'cmp_001', title: 'First order launch', description: 'Get a direct discount on your first paid order.', code: 'SAFE20', discountPercent: 20, reward: '20% off', active: true },
+  { id: 'cmp_002', title: 'Renewal week', description: 'Extra discount if your active service is near expiry.', code: 'RENEW10', discountPercent: 10, reward: '10% off', active: true },
 ]
 
 const notices: Notice[] = [
-  {
-    id: 'ntc_001',
-    title: 'خوش آمدید به Lian VPN',
-    message: 'برای شروع یکی از پلن‌ها رو انتخاب کن و اتصال امن داشته باش.',
-    tone: 'lime',
-  },
+  { id: 'ntc_001', title: 'خوش آمدید به Lian VPN', message: 'برای شروع یکی از پلن‌ها رو انتخاب کن و اتصال امن داشته باش.', tone: 'lime' },
 ]
 
 const faqs: FAQItem[] = [
-  {
-    id: 'faq_001',
-    question: 'How do I receive the config after payment?',
-    answer: 'As soon as the order is marked paid, the config is added to My Services and can be copied or downloaded instantly.',
-  },
-  {
-    id: 'faq_002',
-    question: 'Can I switch my route after buying?',
-    answer: 'Yes. The service page lets you reset the config and support can move you to a better route when needed.',
-  },
-  {
-    id: 'faq_003',
-    question: 'Do you support iPhone, Android, Windows, and macOS?',
-    answer: 'Yes. Each platform has a quick setup guide inside Support with the recommended client and steps.',
-  },
-  {
-    id: 'faq_004',
-    question: 'What happens after the subscription ends?',
-    answer: 'The service status changes to expired, but your order history stays visible and you can renew with one tap.',
-  },
+  { id: 'faq_001', question: 'How do I receive the config after payment?', answer: 'As soon as the order is marked paid, the config is added to My Services and can be copied or downloaded instantly.' },
+  { id: 'faq_002', question: 'Can I switch my route after buying?', answer: 'Yes. The service page lets you reset the config and support can move you to a better route when needed.' },
+  { id: 'faq_003', question: 'Do you support iPhone, Android, Windows, and macOS?', answer: 'Yes. Each platform has a quick setup guide inside Support with the recommended client and steps.' },
+  { id: 'faq_004', question: 'What happens after the subscription ends?', answer: 'The service status changes to expired, but your order history stays visible and you can renew with one tap.' },
 ]
 
 const customers: CustomerSnapshot[] = []
 
-export const createInitialState = (
-  telegramUser?: TelegramUserProfile,
-): PersistentState => ({
+export const createInitialState = (telegramUser?: TelegramUserProfile): PersistentState => ({
   profile: createProfile(telegramUser),
   plans,
   services,

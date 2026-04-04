@@ -533,7 +533,7 @@ function App() {
       return 'fa'
     }
   })
-  const [screen, setScreen] = useState<Screen>('home')
+  const [screen, setScreen] = useState<Screen>('landing')
   const [search] = useState('')
   const deferredSearch = useDeferredValue(search)
   const [activeCategory, setActiveCategory] = useState<PlanCategory | 'all'>('all')
@@ -923,6 +923,11 @@ function App() {
         receiptFileName: manualReceiptFlow ? checkoutReceiptDraft?.name : undefined,
         receiptUploadedAt:
           manualReceiptFlow && checkoutReceiptDraft ? createdAt : undefined,
+        user: {
+          telegramId: telegramUser?.id,
+          firstName: previous.profile.firstName,
+          username: previous.profile.username,
+        },
       }
 
       const nextOrders = [nextOrder, ...previous.orders]
@@ -1348,6 +1353,22 @@ function App() {
     showToast(tr('New package added'))
   }
 
+  const deletePlan = (planId: string) => {
+    setState((prev) => ({ ...prev, plans: prev.plans.filter((p) => p.id !== planId) }))
+    pulseTelegram('medium')
+    showToast(tr('Package deleted'))
+  }
+
+  const deleteCampaign = (campaignId: string) => {
+    setState((prev) => ({ ...prev, campaigns: prev.campaigns.filter((c) => c.id !== campaignId) }))
+    showToast(tr('Discount code deleted'))
+  }
+
+  const deleteFaq = (faqId: string) => {
+    setState((prev) => ({ ...prev, faqs: prev.faqs.filter((f) => f.id !== faqId) }))
+    showToast(tr('FAQ deleted'))
+  }
+
   const addCampaign = () => {
     const trimmedTitle = newCampaignDraft.title.trim()
     const trimmedCode = newCampaignDraft.code.trim().toUpperCase()
@@ -1449,6 +1470,85 @@ function App() {
     setIsCheckoutPromoPanelOpen(false)
     pulseTelegram('light')
   }
+
+  const renderLanding = () => (
+    <div className="landing-shell">
+      <div className="landing-brand">
+        <h1 className="landing-title">Lian Global</h1>
+        <p className="landing-subtitle">{tr('Digital services without borders')}</p>
+      </div>
+
+      <div className="landing-cards">
+        <button className="landing-card landing-card-vpn" onClick={() => switchScreen('home')}>
+          <div className="landing-card-logo">
+            <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <radialGradient id="vpn-bg" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stopColor="#2a1060"/>
+                  <stop offset="100%" stopColor="#0a0520"/>
+                </radialGradient>
+                <linearGradient id="vpn-gold" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#f5c842"/>
+                  <stop offset="100%" stopColor="#c8960a"/>
+                </linearGradient>
+                <linearGradient id="vpn-L" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#9b59f7"/>
+                  <stop offset="100%" stopColor="#6020c0"/>
+                </linearGradient>
+                <linearGradient id="vpn-wave" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#c89fff"/>
+                  <stop offset="100%" stopColor="#7030d0"/>
+                </linearGradient>
+              </defs>
+              <circle cx="60" cy="60" r="56" fill="url(#vpn-bg)" stroke="url(#vpn-gold)" strokeWidth="2"/>
+              <circle cx="60" cy="60" r="50" fill="none" stroke="url(#vpn-gold)" strokeWidth="0.8" opacity="0.4"/>
+              <path d="M36 34 L36 82 L60 82" stroke="url(#vpn-L)" strokeWidth="10" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M57 72 Q68 58 79 62 Q88 65 84 76 Q79 86 68 83 Q58 80 57 72Z" fill="url(#vpn-wave)"/>
+            </svg>
+          </div>
+          <div className="landing-card-label">VPN SERVICES</div>
+          <div className="landing-card-tap">{tr('TAP TO ENTER')}</div>
+        </button>
+
+        <button className="landing-card landing-card-exchange" onClick={() => switchScreen('home')}>
+          <div className="landing-card-logo">
+            <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <radialGradient id="ex-bg" cx="50%" cy="50%" r="60%">
+                  <stop offset="0%" stopColor="#1a0a40"/>
+                  <stop offset="100%" stopColor="#060314"/>
+                </radialGradient>
+                <linearGradient id="ex-gold" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#f5c842"/>
+                  <stop offset="100%" stopColor="#c8960a"/>
+                </linearGradient>
+                <linearGradient id="ex-purple" x1="0%" y1="100%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="#6020c0"/>
+                  <stop offset="100%" stopColor="#9b59f7"/>
+                </linearGradient>
+              </defs>
+              <rect width="120" height="120" rx="14" fill="url(#ex-bg)"/>
+              <circle cx="60" cy="55" r="26" stroke="url(#ex-purple)" strokeWidth="2.5" fill="none"/>
+              <path d="M46 55 L74 55 M60 41 L60 69" stroke="url(#ex-purple)" strokeWidth="1.8" opacity="0.5"/>
+              <text x="60" y="62" textAnchor="middle" fill="url(#ex-gold)" fontSize="22" fontWeight="bold" fontFamily="sans-serif">L</text>
+              <path d="M22 30 Q60 16 98 30" stroke="url(#ex-gold)" strokeWidth="3" fill="none" strokeLinecap="round"/>
+              <path d="M98 80 Q60 94 22 80" stroke="url(#ex-purple)" strokeWidth="3" fill="none" strokeLinecap="round"/>
+              <polygon points="94,22 98,30 88,28" fill="url(#ex-gold)"/>
+              <polygon points="26,88 22,80 32,82" fill="url(#ex-purple)"/>
+              <circle cx="40" cy="76" r="9" fill="#0a0520" stroke="url(#ex-purple)" strokeWidth="1.5"/>
+              <text x="40" y="80" textAnchor="middle" fill="#f5c842" fontSize="10" fontWeight="bold">₿</text>
+              <circle cx="80" cy="34" r="9" fill="#0a0520" stroke="url(#ex-gold)" strokeWidth="1.5"/>
+              <text x="80" y="38" textAnchor="middle" fill="#f5c842" fontSize="10" fontWeight="bold">$</text>
+            </svg>
+          </div>
+          <div className="landing-card-label">EXCHANGE SERVICES</div>
+          <div className="landing-card-tap">{tr('TAP TO ENTER')}</div>
+        </button>
+      </div>
+
+      <p className="landing-footer">{tr('Fast delivery, security, and 24h support')}</p>
+    </div>
+  )
 
   const renderHome = () => (
     <>
@@ -1965,9 +2065,87 @@ function App() {
 
       <section className="content-section">
         <SectionHeader
+          eyebrow={tr('Orders')}
+          title={tr('All orders')}
+        />
+        <div className="admin-stack">
+          {state.orders.length ? (
+            state.orders.map((order) => {
+              const linked = state.services.find((s) => s.id === order.serviceId)
+              return (
+                <details key={order.id} className="admin-card admin-plan-card admin-editor-card">
+                  <summary className="admin-plan-summary admin-editor-summary">
+                    <div className="admin-plan-copy admin-editor-copy">
+                      <strong>{tr(order.planName)}</strong>
+                      <p>
+                        {formatMoney(order.amount)} •{' '}
+                        {order.user?.firstName ?? order.planName}
+                        {order.user?.username ? ` @${order.user.username}` : ''}
+                      </p>
+                    </div>
+                    <div className="admin-plan-summary-side">
+                      <span className={`plan-meta-chip ${order.status === 'paid' ? '' : 'chip-amber'}`}>
+                        {tr(order.status)}
+                      </span>
+                      <span className="ticket-toggle order-toggle" aria-hidden="true">
+                        <ChevronIcon />
+                      </span>
+                    </div>
+                  </summary>
+                  <div className="admin-plan-body admin-editor-body">
+                    <div className="admin-order-meta">
+                      <div className="admin-order-row"><span>{tr('Plan')}</span><strong>{tr(order.planName)}</strong></div>
+                      <div className="admin-order-row"><span>{tr('Amount')}</span><strong>{formatMoney(order.amount)}</strong></div>
+                      <div className="admin-order-row"><span>{tr('Payment')}</span><strong>{tr(order.paymentMethod)}</strong></div>
+                      <div className="admin-order-row"><span>{tr('Kind')}</span><strong>{tr(order.kind)}</strong></div>
+                      <div className="admin-order-row"><span>{tr('Date')}</span><strong>{formatDate(order.createdAt)}</strong></div>
+                      {order.promoCode ? (
+                        <div className="admin-order-row"><span>{tr('Promo')}</span><strong>{order.promoCode}</strong></div>
+                      ) : null}
+                      <div className="admin-order-row admin-order-row-full">
+                        <span>{tr('Order ID')}</span>
+                        <code className="admin-order-code">{order.id}</code>
+                      </div>
+                      {linked ? (
+                        <div className="admin-order-row admin-order-row-full">
+                          <span>{tr('Config code')}</span>
+                          <code className="admin-order-code">{linked.configCode}</code>
+                        </div>
+                      ) : null}
+                    </div>
+                    {order.receiptImage ? (
+                      <div className="admin-receipt-block">
+                        <p className="eyebrow">{tr('Receipt')}</p>
+                        <img src={order.receiptImage} alt={tr('Receipt screenshot')} className="admin-receipt-img" />
+                        {order.receiptFileName ? <p className="muted-copy">{order.receiptFileName}</p> : null}
+                      </div>
+                    ) : order.status === 'processing' ? (
+                      <p className="muted-copy">{tr('Receipt pending')}</p>
+                    ) : null}
+                    {order.status === 'processing' ? (
+                      <button
+                        className="primary-button full-width"
+                        onClick={() => updateOrderField(order.id, 'status', 'paid')}
+                      >
+                        {tr('Mark as paid')}
+                      </button>
+                    ) : null}
+                  </div>
+                </details>
+              )
+            })
+          ) : (
+            <div className="empty-card admin-editor-empty">
+              <p>{tr('No orders yet')}</p>
+            </div>
+          )}
+        </div>
+      </section>
+
+      <section className="content-section">
+        <SectionHeader
           eyebrow={tr('Services')}
           title={tr('Edit delivered services')}
-          subtitle={tr('Service cards, status, config, and expiry can all be changed from here.')}
         />
 
         <div className="admin-stack">
@@ -2137,159 +2315,11 @@ function App() {
         </div>
       </section>
 
-      <section className="content-section">
-        <SectionHeader
-          eyebrow={tr('Orders')}
-          title={tr('Edit customer orders')}
-          subtitle={tr('Amounts, dates, payment state, and linked package names can all be edited.')}
-        />
-
-        <div className="admin-stack">
-          {state.orders.length ? (
-            state.orders.map((order) => (
-              <details key={order.id} className="admin-card admin-plan-card admin-editor-card">
-                <summary className="admin-plan-summary admin-editor-summary">
-                  <div className="admin-plan-copy admin-editor-copy">
-                    <strong>{tr(order.planName)}</strong>
-                    <p>
-                      {formatMoney(order.amount)} • {tr(order.kind)}
-                    </p>
-                  </div>
-                  <div className="admin-plan-summary-side">
-                    <span className="plan-meta-chip">{tr(order.status)}</span>
-                    <span className="ticket-toggle order-toggle" aria-hidden="true">
-                      <ChevronIcon />
-                    </span>
-                  </div>
-                </summary>
-
-                <div className="admin-plan-body admin-editor-body">
-                  <div className="admin-form-grid">
-                    <label className="field-label">
-                      <span>{tr('Package')}</span>
-                      <select
-                        className="field"
-                        value={order.planId}
-                        onChange={(event) =>
-                          updateOrderField(order.id, 'planId', event.target.value)
-                        }
-                      >
-                        {state.plans.map((plan) => (
-                          <option key={plan.id} value={plan.id}>
-                            {tr(plan.name)}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label className="field-label">
-                      <span>{tr('Amount')}</span>
-                      <input
-                        className="field"
-                        type="number"
-                        value={order.amount}
-                        onChange={(event) =>
-                          updateOrderField(order.id, 'amount', Math.max(0, Number(event.target.value) || 0))
-                        }
-                      />
-                    </label>
-                    <label className="field-label">
-                      <span>{tr('Status')}</span>
-                      <select
-                        className="field"
-                        value={order.status}
-                        onChange={(event) =>
-                          updateOrderField(
-                            order.id,
-                            'status',
-                            event.target.value as Order['status'],
-                          )
-                        }
-                      >
-                        {orderStatusOptions.map((status) => (
-                          <option key={status} value={status}>
-                            {tr(status)}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label className="field-label">
-                      <span>{tr('Payment')}</span>
-                      <select
-                        className="field"
-                        value={order.paymentMethod}
-                        onChange={(event) =>
-                          updateOrderField(
-                            order.id,
-                            'paymentMethod',
-                            event.target.value as PaymentMethod,
-                          )
-                        }
-                      >
-                        {paymentOptions.map((option) => (
-                          <option key={option.id} value={option.id}>
-                            {tr(option.label)}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label className="field-label">
-                      <span>{tr('Kind')}</span>
-                      <select
-                        className="field"
-                        value={order.kind}
-                        onChange={(event) =>
-                          updateOrderField(
-                            order.id,
-                            'kind',
-                            event.target.value as Order['kind'],
-                          )
-                        }
-                      >
-                        {orderKindOptions.map((kind) => (
-                          <option key={kind} value={kind}>
-                            {tr(kind)}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label className="field-label">
-                      <span>{tr('Created at')}</span>
-                      <input
-                        className="field"
-                        type="date"
-                        value={toDateInputValue(order.createdAt)}
-                        onChange={(event) =>
-                          updateOrderField(order.id, 'createdAt', toIsoDate(event.target.value))
-                        }
-                      />
-                    </label>
-                    <label className="field-label admin-span-full">
-                      <span>{tr('Promo code')}</span>
-                      <input
-                        className="field"
-                        value={order.promoCode ?? ''}
-                        onChange={(event) =>
-                          updateOrderField(order.id, 'promoCode', event.target.value)
-                        }
-                      />
-                    </label>
-                  </div>
-                </div>
-              </details>
-            ))
-          ) : (
-            <div className="empty-card admin-editor-empty">
-              <p>{tr('No orders yet')}</p>
-            </div>
-          )}
-        </div>
-      </section>
 
       <section className="content-section">
         <SectionHeader
           eyebrow={tr('Broadcast')}
           title={tr('Edit live home banners')}
-          subtitle={tr('Change any existing notice and publish new ones from the same place.')}
         />
 
         <div className="admin-stack">
@@ -2621,6 +2651,12 @@ function App() {
                     />
                   </label>
                 </div>
+                <button
+                  className="ghost-button full-width admin-delete-btn"
+                  onClick={() => deletePlan(plan.id)}
+                >
+                  {tr('Delete package')}
+                </button>
               </div>
             </details>
           ))}
@@ -2822,7 +2858,6 @@ function App() {
         <SectionHeader
           eyebrow={tr('Campaigns')}
           title={tr('Coupons and acquisition loops')}
-          subtitle={tr('Edit the codes customers use at checkout and add new ones here.')}
         />
 
         <div className="admin-stack">
@@ -2916,6 +2951,12 @@ function App() {
                     />
                   </label>
                 </div>
+                <button
+                  className="ghost-button full-width admin-delete-btn"
+                  onClick={() => deleteCampaign(campaign.id)}
+                >
+                  {tr('Delete discount code')}
+                </button>
               </div>
             </details>
           ))}
@@ -3010,7 +3051,6 @@ function App() {
         <SectionHeader
           eyebrow={tr('FAQ')}
           title={tr('Edit FAQ entries')}
-          subtitle={tr('Everything customers read in Support can be changed here.')}
         />
 
         <div className="admin-stack">
@@ -3051,6 +3091,12 @@ function App() {
                     />
                   </label>
                 </div>
+                <button
+                  className="ghost-button full-width admin-delete-btn"
+                  onClick={() => deleteFaq(faq.id)}
+                >
+                  {tr('Delete FAQ')}
+                </button>
               </div>
             </details>
           ))}
@@ -3129,6 +3175,7 @@ function App() {
       </header>
 
       <main className="screen-body">
+        {screen === 'landing' && renderLanding()}
         {screen === 'home' && renderHome()}
         {screen === 'plans' && renderPlans()}
         {screen === 'services' && renderServices()}

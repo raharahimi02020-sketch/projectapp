@@ -1943,3 +1943,178 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ─── Landing Screen ──────────────────────────────────────────── */
+.landing-shell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100svh;
+  padding: 32px 20px;
+  gap: 32px;
+  background: radial-gradient(ellipse at 50% 20%, #1e0850 0%, #050608 65%);
+}
+
+.landing-brand {
+  text-align: center;
+}
+
+.landing-title {
+  font-size: 2.2rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  background: linear-gradient(135deg, #f5c842 0%, #c8960a 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 0;
+}
+
+.landing-subtitle {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin-top: 6px;
+}
+
+.landing-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  width: 100%;
+  max-width: 380px;
+}
+
+.landing-card {
+  background: linear-gradient(145deg, #180840, #090420);
+  border: 1px solid rgba(245, 200, 66, 0.25);
+  border-radius: 18px;
+  padding: 22px 12px 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
+}
+
+.landing-card:active {
+  transform: scale(0.95);
+}
+
+.landing-card-vpn:hover {
+  border-color: rgba(155, 89, 247, 0.5);
+  box-shadow: 0 6px 32px rgba(155, 89, 247, 0.25);
+}
+
+.landing-card-exchange:hover {
+  border-color: rgba(245, 200, 66, 0.5);
+  box-shadow: 0 6px 32px rgba(245, 200, 66, 0.2);
+}
+
+.landing-card-logo {
+  width: 96px;
+  height: 96px;
+}
+
+.landing-card-logo svg {
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 0 12px rgba(155, 89, 247, 0.4));
+}
+
+.landing-card-exchange .landing-card-logo svg {
+  filter: drop-shadow(0 0 12px rgba(245, 200, 66, 0.35));
+}
+
+.landing-card-label {
+  color: #f5c842;
+  font-weight: 700;
+  font-size: 0.72rem;
+  letter-spacing: 0.07em;
+  text-align: center;
+}
+
+.landing-card-tap {
+  color: #9b59f7;
+  font-size: 0.68rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+
+.landing-footer {
+  color: var(--muted);
+  font-size: 0.8rem;
+  text-align: center;
+  opacity: 0.7;
+}
+
+/* ─── Admin Orders View ───────────────────────────────────────── */
+.admin-order-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.admin-order-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 0.85rem;
+}
+
+.admin-order-row span {
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.admin-order-row strong {
+  text-align: right;
+}
+
+.admin-order-row-full {
+  flex-direction: column;
+  gap: 4px;
+}
+
+.admin-order-code {
+  font-family: monospace;
+  font-size: 0.72rem;
+  color: var(--accent-lime);
+  word-break: break-all;
+  background: rgba(255,255,255,0.05);
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.admin-receipt-block {
+  margin: 12px 0;
+}
+
+.admin-receipt-img {
+  width: 100%;
+  border-radius: 10px;
+  margin-top: 8px;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+.chip-amber {
+  background: rgba(245, 166, 35, 0.15);
+  color: #f5a623;
+  border: 1px solid rgba(245, 166, 35, 0.25);
+}
+
+/* ─── Admin Delete Button ─────────────────────────────────────── */
+.admin-delete-btn {
+  color: #ff6b6b !important;
+  border-color: rgba(255, 107, 107, 0.3) !important;
+  margin-top: 12px;
+}
+
+.admin-delete-btn:hover {
+  background: rgba(255, 107, 107, 0.08) !important;
+}

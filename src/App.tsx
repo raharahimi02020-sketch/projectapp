@@ -86,17 +86,13 @@ const navItems: Array<{
 
 const planCategories: Array<{ id: PlanCategory | 'all'; label: string }> = [
   { id: 'all', label: 'All' },
-  { id: 'starter', label: 'Starter' },
-  { id: 'streaming', label: 'Streaming' },
-  { id: 'family', label: 'Family' },
-  { id: 'unlimited', label: 'Unlimited' },
-  { id: 'business', label: 'Business' },
+  { id: 'v2ray', label: 'V2Ray' },
+  { id: 'openvpn', label: 'OpenVPN' },
 ]
 
 const paymentOptions: Array<{ id: PaymentMethod; label: string }> = [
   { id: 'card', label: 'Card' },
   { id: 'crypto', label: 'Crypto' },
-  { id: 'wallet', label: 'Wallet' },
 ]
 
 const bankTransferDetails = {
@@ -132,8 +128,6 @@ const cryptoTransferDetails = {
   ],
 } as const
 
-const orderStatusOptions: Array<Order['status']> = ['paid', 'processing']
-const orderKindOptions: Array<Order['kind']> = ['purchase', 'renew', 'upgrade', 'trial']
 
 const setupGuides = [
   {
@@ -200,7 +194,7 @@ const toIsoDate = (value: string) =>
 const createEmptyPlanDraft = (): Plan => ({
   id: '',
   name: '',
-  category: 'starter',
+  category: 'v2ray',
   subtitle: '',
   description: '',
   badge: '',
@@ -213,7 +207,7 @@ const createEmptyPlanDraft = (): Plan => ({
   dataCap: 'Unlimited',
   protocols: ['VLESS'],
   accent: 'lime',
-  perks: ['Instant delivery'],
+  perks: ['Instant delivery', 'V2Ray (VLESS)', 'Single user'],
 })
 
 const createEmptyCampaignDraft = (): Campaign => ({
@@ -240,6 +234,9 @@ const resolvePrimaryService = (services: UserService[]) =>
 
 const paidLifetimeValue = (orders: Order[]) =>
   orders.reduce((sum, order) => sum + (order.status === 'paid' ? order.amount : 0), 0)
+
+const totalOrdersValue = (orders: Order[]) =>
+  orders.reduce((sum, order) => sum + (order.status !== 'cancelled' && order.status !== 'rejected' ? order.amount : 0), 0)
 
 const buildPrimaryCustomerSnapshot = (
   profile: UserProfile,
@@ -533,7 +530,7 @@ function App() {
       return 'fa'
     }
   })
-  const [screen, setScreen] = useState<Screen>('landing')
+  const [screen, setScreen] = useState<Screen>('home')
   const [search] = useState('')
   const deferredSearch = useDeferredValue(search)
   const [activeCategory, setActiveCategory] = useState<PlanCategory | 'all'>('all')
@@ -549,8 +546,26 @@ function App() {
     useState<SupportTicket['category']>('setup')
   const [ticketMessage, setTicketMessage] = useState('')
   const [adminTitle, setAdminTitle] = useState('')
+  const [ticketReplyTexts, setTicketReplyTexts] = useState<Record<string, string>>({})
+  const [deliveryDrafts, setDeliveryDrafts] = useState<Record<string, {
+    configCode: string
+    vpnUsername: string
+    vpnPassword: string
+    ovpnFileContent: string
+  }>>({})
+
+  const getDeliveryDraft = (orderId: string) =>
+    deliveryDrafts[orderId] ?? { configCode: '', vpnUsername: '', vpnPassword: '', ovpnFileContent: '' }
+
+  const setDeliveryField = (orderId: string, field: string, value: string) => {
+    setDeliveryDrafts((prev) => ({
+      ...prev,
+      [orderId]: { ...getDeliveryDraft(orderId), [field]: value },
+    }))
+  }
   const [adminMessage, setAdminMessage] = useState('')
   const [adminTone, setAdminTone] = useState<'lime' | 'ice' | 'amber'>('lime')
+  const [redisConnected, setRedisConnected] = useState<boolean | null>(null)
   const [newPlanDraft, setNewPlanDraft] = useState<Plan>(() => createEmptyPlanDraft())
   const [newCampaignDraft, setNewCampaignDraft] =
     useState<Campaign>(() => createEmptyCampaignDraft())
@@ -586,6 +601,91 @@ function App() {
     initTelegramShell()
   }, [])
 
+  // Build store API URL with telegram ID as query param (avoids CORS preflight)
+  const storeUrl = telegramUser?.id ? `/api/store?tgid=${telegramUser.id}` : '/api/store'
+
+  useEffect(() => {
+    const loadFromServer = async () => {
+      try {
+        const res = await fetch(storeUrl)
+        if (!res.ok) return
+        const data = await res.json()
+
+        // Track Redis connectivity for admin warning
+        if (typeof data._redis === 'boolean') {
+          setRedisConnected(data._redis)
+        }
+
+        setState((prev) => {
+          const next = { ...prev }
+
+          // Load plans/campaigns/etc from server
+          if (data.plans?.length) next.plans = data.plans
+          if (data.campaigns?.length) next.campaigns = data.campaigns
+          if (data.notices?.length) next.notices = data.notices
+          if (data.faqs?.length) next.faqs = data.faqs
+          if (data.servers?.length) next.servers = data.servers
+
+          // Orders from server are already filtered by the API:
+          // - Admin gets ALL orders
+          // - User gets ONLY their own orders
+          if (Array.isArray(data.orders)) {
+            if (isAdmin) {
+              // Admin: merge server orders with any local orders, server wins
+              const localMap = new Map<string, Order>(prev.orders.map((o) => [o.id, o]))
+              const serverMap = new Map<string, Order>(data.orders.map((o: Order) => [o.id, o]))
+              const merged = new Map<string, Order>([...localMap, ...serverMap])
+              // Keep local receipt images
+              for (const [id, order] of merged) {
+                const local = localMap.get(id)
+                if (local?.receiptImage && !order.receiptImage) {
+                  merged.set(id, { ...order, receiptImage: local.receiptImage, receiptFileName: local.receiptFileName, receiptUploadedAt: local.receiptUploadedAt })
+                }
+              }
+              next.orders = Array.from(merged.values()).sort(
+                (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+              )
+            } else {
+              // User: update status of local orders from server (admin may have confirmed/rejected)
+              // and add any server orders not present locally (e.g. user on new device)
+              const serverMap = new Map<string, Order>(data.orders.map((o: Order) => [o.id, o]))
+              const localIds = new Set(prev.orders.map((o) => o.id))
+              const updatedLocal = prev.orders.map((localOrder) => {
+                const sv = serverMap.get(localOrder.id)
+                if (sv) {
+                  return {
+                    ...localOrder,
+                    status: sv.status as Order['status'],
+                    serviceId: sv.serviceId ?? localOrder.serviceId,
+                    receiptImage: localOrder.receiptImage ?? sv.receiptImage,
+                    receiptFileName: localOrder.receiptFileName ?? sv.receiptFileName,
+                    receiptUploadedAt: localOrder.receiptUploadedAt ?? sv.receiptUploadedAt,
+                  }
+                }
+                return localOrder
+              })
+              // Add server-only orders (not present locally)
+              const serverOnly = data.orders.filter((o: Order) => !localIds.has(o.id))
+              next.orders = [...updatedLocal, ...serverOnly].sort(
+                (a: Order, b: Order) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+              )
+            }
+          }
+
+          return next
+        })
+      } catch {
+        // silently fall back to localStorage state
+      }
+    }
+    void loadFromServer()
+
+    // Poll: admins every 10s, users every 30s
+    const ms = isAdmin ? 10000 : 30000
+    const interval = window.setInterval(() => { void loadFromServer() }, ms)
+    return () => window.clearInterval(interval)
+  }, [isAdmin, storeUrl])
+
   useEffect(() => {
     try {
       window.localStorage.setItem(LANGUAGE_STORAGE_KEY, language)
@@ -599,7 +699,25 @@ function App() {
 
   useEffect(() => {
     savePersistentState(state)
-  }, [state])
+    // Admin syncs public config (plans, campaigns, etc.) — NOT orders
+    const syncToServer = async () => {
+      try {
+        await fetch(storeUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            plans: state.plans,
+            campaigns: state.campaigns,
+            notices: state.notices,
+            faqs: state.faqs,
+            servers: state.servers,
+          }),
+          keepalive: true,
+        })
+      } catch { /* silent */ }
+    }
+    if (isAdmin) void syncToServer()
+  }, [state, isAdmin])
 
   useEffect(() => {
     if (!toast) {
@@ -635,9 +753,13 @@ function App() {
   const openTicketCount = state.tickets.filter(
     (ticket) => ticket.status !== 'resolved',
   ).length
+  const ALLOWED_PROTOCOLS = ['VLESS', 'VMess', 'Reality', 'OpenVPN', 'V2Ray']
   const filteredPlans = state.plans.filter((plan) => {
     const matchesCategory =
       activeCategory === 'all' || plan.category === activeCategory
+    const hasAllowedProtocol = plan.protocols.some((p) =>
+      ALLOWED_PROTOCOLS.includes(p)
+    )
     const haystack = [
       tr(plan.name),
       tr(plan.subtitle),
@@ -648,7 +770,7 @@ function App() {
       .join(' ')
       .toLowerCase()
 
-    return matchesCategory && (!planSearchToken || haystack.includes(planSearchToken))
+    return matchesCategory && hasAllowedProtocol && (!planSearchToken || haystack.includes(planSearchToken))
   })
   const featuredPlans = filteredPlans.filter((plan) => plan.featured).slice(0, 3)
   const filteredFaqs = state.faqs.filter((faq) => {
@@ -675,6 +797,7 @@ function App() {
       : 0
   const avgPing = averageLatency(state.servers)
   const revenue = paidLifetimeValue(state.orders)
+  const totalSpent = totalOrdersValue(state.orders)
   const activeUsers = state.customers.filter(
     (customer) => customer.status === 'active' || customer.status === 'expiring',
   ).length
@@ -744,6 +867,22 @@ function App() {
 
       showToast(tr('Receipt uploaded'))
       pulseTelegram('light')
+
+      // Sync receipt to server so admins can see it
+      void fetch(storeUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'update_order',
+          orderId,
+          updates: {
+            receiptImage: receipt.image,
+            receiptFileName: receipt.name,
+            receiptUploadedAt: new Date().toISOString(),
+          },
+        }),
+        keepalive: true,
+      }).catch(() => null)
     } catch {
       showToast(tr('Please choose an image file'))
     }
@@ -773,7 +912,7 @@ function App() {
       return
     }
 
-    const starterPlan = state.plans.find((plan) => plan.category === 'starter')
+    const starterPlan = state.plans.find((plan) => plan.category === 'v2ray') ?? state.plans[0]
     if (!starterPlan) {
       return
     }
@@ -834,7 +973,7 @@ function App() {
             planName: starterPlan.name,
             amount: 0,
             status: 'paid',
-            paymentMethod: 'wallet',
+            paymentMethod: 'card',
             kind: 'trial',
             createdAt: new Date().toISOString(),
             serviceId,
@@ -869,8 +1008,7 @@ function App() {
       const createdAt = new Date().toISOString()
       const targetServiceId =
         purchaseIntent.mode === 'buy' ? makeId('svc') : purchaseIntent.serviceId
-      const manualReceiptFlow =
-        paymentMethod === 'card' || paymentMethod === 'crypto'
+      const manualReceiptFlow = true // all payments require receipt confirmation
       const orderKind: Order['kind'] =
         purchaseIntent.mode === 'buy'
           ? 'purchase'
@@ -977,19 +1115,63 @@ function App() {
     })
 
     if (notificationPayload) {
-      void notifyPurchaseByEmail(notificationPayload)
+      const payload = notificationPayload as PurchaseNotificationPayload
+      void notifyPurchaseByEmail(payload)
+
+      // Save order to server so admins can see it (with retry + visible debug)
+      const orderData = {
+        action: 'submit_order',
+        order: {
+          id: payload.orderId,
+          planId: payload.plan.id,
+          planName: payload.plan.name,
+          amount: payload.amount,
+          status: 'processing' as const,
+          paymentMethod: payload.paymentMethod,
+          kind: payload.kind,
+          createdAt: payload.createdAt,
+          promoCode: payload.promoCode,
+          user: {
+            telegramId: payload.user.telegramId,
+            firstName: payload.user.firstName,
+            username: payload.user.username,
+          },
+          receiptImage: checkoutReceiptDraft?.image,
+          receiptFileName: checkoutReceiptDraft?.name,
+          receiptUploadedAt: checkoutReceiptDraft ? payload.createdAt : undefined,
+        },
+      }
+
+      // Submit with retry and visible feedback
+      ;(async () => {
+        for (let attempt = 0; attempt < 3; attempt++) {
+          try {
+            const r = await fetch(storeUrl, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(orderData),
+            })
+            if (r.ok) {
+              console.log('[submit_order] ✅ Order synced to server:', payload.orderId)
+              showToast('✅ سفارش به سرور ارسال شد')
+              return
+            }
+            console.error(`[submit_order] Server ${r.status} attempt ${attempt + 1}`)
+          } catch (err) {
+            console.error(`[submit_order] Network error attempt ${attempt + 1}:`, err)
+          }
+          await new Promise((ok) => setTimeout(ok, 2000))
+        }
+        showToast('⚠️ خطا در ارسال سفارش به سرور')
+        console.error('[submit_order] ❌ All retries failed:', payload.orderId)
+      })()
+    } else {
+      console.error('[confirmCheckout] ❌ notificationPayload is NULL — order was NOT sent to server')
+      showToast('⚠️ خطا: سفارش به سرور ارسال نشد')
     }
 
     pulseTelegram('heavy')
-    showToast(
-      paymentMethod === 'card' || paymentMethod === 'crypto'
-        ? tr('Order moved to Orders and is waiting for your payment receipt')
-        : purchaseIntent.mode === 'renew'
-          ? tr('Subscription renewed')
-          : purchaseIntent.mode === 'upgrade'
-            ? tr('Plan upgraded successfully')
-            : tr('VPN service delivered instantly'),
-    )
+    showToast(tr('Order submitted — awaiting payment receipt'))
     closeCheckout()
     switchScreen('services')
   }
@@ -1009,6 +1191,21 @@ function App() {
     showToast(
       success ? tr('Config copied to clipboard') : tr('Clipboard is not available'),
     )
+  }
+
+  const copyVpnCredentials = async (service: UserService) => {
+    const text = `Username: ${service.vpnUsername ?? ''}
+Password: ${service.vpnPassword ?? ''}`
+    const success = await copyText(text)
+    pulseTelegram('light')
+    showToast(success ? 'یوزرنیم و پسورد کپی شد' : tr('Clipboard is not available'))
+  }
+
+  const downloadOvpnFile = (service: UserService) => {
+    if (!service.ovpnFileContent) return
+    downloadTextFile(service.ovpnFileName ?? 'lian.ovpn', service.ovpnFileContent)
+    pulseTelegram('light')
+    showToast('فایل OpenVPN دانلود شد')
   }
 
   const openUpgrade = (service: UserService) => {
@@ -1122,87 +1319,6 @@ function App() {
     })
   }
 
-  const updateOrderField = <K extends keyof Order>(orderId: string, field: K, value: Order[K]) => {
-    setState((previous) => {
-      const currentOrder = previous.orders.find((order) => order.id === orderId)
-
-      if (!currentOrder) {
-        return previous
-      }
-
-      let orders = previous.orders
-      let services = previous.services
-
-      if (field === 'planId') {
-        const nextPlan =
-          previous.plans.find((plan) => plan.id === value) ??
-          previous.plans.find((plan) => plan.id === currentOrder.planId)
-
-        orders = previous.orders.map((order) =>
-          order.id === orderId
-            ? {
-                ...order,
-                planId: nextPlan?.id ?? order.planId,
-                planName: nextPlan?.name ?? order.planName,
-                amount: nextPlan?.price ?? order.amount,
-              }
-            : order,
-        )
-
-        services = previous.services.map((service) =>
-          service.orderId === orderId
-            ? {
-                ...service,
-                planId: nextPlan?.id ?? service.planId,
-                planName: nextPlan?.name ?? service.planName,
-                deviceLimit: nextPlan?.deviceLimit ?? service.deviceLimit,
-              }
-            : service,
-        )
-      } else if (field === 'promoCode') {
-        orders = previous.orders.map((order) =>
-          order.id === orderId
-            ? {
-                ...order,
-                promoCode: String(value).trim()
-                  ? String(value).trim().toUpperCase()
-                  : undefined,
-              }
-            : order,
-        )
-      } else if (field === 'status' && value === 'paid' && currentOrder.status !== 'paid') {
-        const nextOrder: Order = { ...currentOrder, status: 'paid' }
-        const fulfillment = fulfillOrder(
-          previous.services,
-          previous.plans,
-          previous.servers,
-          previous.profile,
-          nextOrder,
-        )
-
-        services = fulfillment.services
-        orders = previous.orders.map((order) =>
-          order.id === orderId ? nextOrder : order,
-        )
-      } else {
-        orders = previous.orders.map((order) =>
-          order.id === orderId ? { ...order, [field]: value } : order,
-        )
-      }
-
-      return {
-        ...previous,
-        orders,
-        services,
-        customers: syncPrimaryCustomer(
-          previous.profile,
-          services,
-          orders,
-          previous.customers,
-        ),
-      }
-    })
-  }
 
   const updatePlanField = <K extends keyof Plan>(planId: string, field: K, value: Plan[K]) => {
     setState((previous) => {
@@ -1339,7 +1455,7 @@ function App() {
       price: Math.max(99000, Number(newPlanDraft.price) || 0),
       durationDays: Math.max(1, Number(newPlanDraft.durationDays) || 30),
       deviceLimit: Math.max(1, Number(newPlanDraft.deviceLimit) || 1),
-      locations: newPlanDraft.locations.length ? newPlanDraft.locations : ['Germany'],
+      locations: newPlanDraft.locations.length ? newPlanDraft.locations : [],
       protocols: newPlanDraft.protocols.length ? newPlanDraft.protocols : ['VLESS'],
       perks: newPlanDraft.perks.length ? newPlanDraft.perks : ['Instant delivery'],
     }
@@ -1448,14 +1564,207 @@ function App() {
     showToast(tr('Broadcast notice published to the home screen'))
   }
 
-  const copyReferral = async () => {
-    const success = await copyText(
-      `https://t.me/lianvpn_bot?start=${state.profile.referralCode}`,
-    )
-    showToast(
-      success ? tr('Referral link copied') : tr('Clipboard is not available'),
-    )
+  const confirmDelivery = (orderId: string) => {
+    const draft = getDeliveryDraft(orderId)
+    if (!draft.configCode && !draft.vpnUsername && !draft.ovpnFileContent) {
+      showToast('حداقل یک نوع سرویس وارد کن (V2Ray یا OpenVPN)')
+      return
+    }
+
+    setState((prev) => {
+      const order = prev.orders.find((o) => o.id === orderId)
+      if (!order) return prev
+
+      // Create or update the service
+      const serviceId = order.serviceId ?? makeId('svc')
+      const livePlan = prev.plans.find((p) => p.id === order.planId) ?? prev.plans[0]
+
+      const existingService = prev.services.find((s) => s.id === serviceId)
+
+      const newService: typeof prev.services[0] = existingService
+        ? {
+            ...existingService,
+            status: 'active',
+            configCode: draft.configCode || existingService.configCode,
+            vpnUsername: draft.vpnUsername || undefined,
+            vpnPassword: draft.vpnPassword || undefined,
+            ovpnFileContent: draft.ovpnFileContent || undefined,
+            ovpnFileName: draft.ovpnFileContent
+              ? `lian-${serviceId.slice(-6)}.ovpn`
+              : undefined,
+          }
+        : {
+            id: serviceId,
+            planId: order.planId,
+            planName: order.planName,
+            status: 'active' as const,
+            expiresAt: createExpiry(new Date(), livePlan?.durationDays ?? 30),
+            devicesInUse: 1,
+            deviceLimit: livePlan?.deviceLimit ?? 1,
+            region: '',
+            protocol: draft.configCode ? 'V2Ray' : 'OpenVPN',
+            configCode: draft.configCode,
+            orderId,
+            latency: 0,
+            uptime: '99.9%',
+            vpnUsername: draft.vpnUsername || undefined,
+            vpnPassword: draft.vpnPassword || undefined,
+            ovpnFileContent: draft.ovpnFileContent || undefined,
+            ovpnFileName: draft.ovpnFileContent
+              ? `lian-${serviceId.slice(-6)}.ovpn`
+              : undefined,
+          }
+
+      const services = existingService
+        ? prev.services.map((s) => (s.id === serviceId ? newService : s))
+        : [...prev.services, newService]
+
+      const orders = prev.orders.map((o) =>
+        o.id === orderId
+          ? { ...o, status: 'paid' as const, serviceId }
+          : o
+      )
+
+      return {
+        ...prev,
+        services,
+        orders,
+        customers: syncPrimaryCustomer(prev.profile, services, orders, prev.customers),
+      }
+    })
+
+    // Clear the draft after delivery
+    setDeliveryDrafts((prev) => {
+      const next = { ...prev }
+      delete next[orderId]
+      return next
+    })
+
+    // Sync order status to server
+    void fetch(storeUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'update_order',
+        orderId,
+        updates: { status: 'paid', serviceId: orderId },
+      }),
+      keepalive: true,
+    }).catch(() => null)
+
+    pulseTelegram('heavy')
+    showToast('✅ سرویس تایید و ارسال شد')
   }
+
+  // ── User: cancel own order ──
+  const cancelOrder = (orderId: string) => {
+    setState((prev) => ({
+      ...prev,
+      orders: prev.orders.map((o) =>
+        o.id === orderId && o.status === 'processing'
+          ? { ...o, status: 'cancelled' as const }
+          : o,
+      ),
+    }))
+    void fetch(storeUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'update_order',
+        orderId,
+        updates: { status: 'cancelled' },
+      }),
+      keepalive: true,
+    }).catch(() => null)
+    pulseTelegram('medium')
+    showToast(tr('Order cancelled'))
+  }
+
+  // ── Admin: reject order ──
+  const rejectOrder = (orderId: string) => {
+    if (!window.confirm(tr('Confirm reject?'))) return
+    setState((prev) => ({
+      ...prev,
+      orders: prev.orders.map((o) =>
+        o.id === orderId ? { ...o, status: 'rejected' as const } : o,
+      ),
+    }))
+    void fetch(storeUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'update_order',
+        orderId,
+        updates: { status: 'rejected' },
+      }),
+      keepalive: true,
+    }).catch(() => null)
+    pulseTelegram('heavy')
+    showToast(tr('Order rejected'))
+  }
+
+  // ── Admin: delete order ──
+  const deleteOrder = (orderId: string) => {
+    if (!window.confirm(tr('Confirm delete?'))) return
+    setState((prev) => ({
+      ...prev,
+      orders: prev.orders.filter((o) => o.id !== orderId),
+    }))
+    void fetch(storeUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'delete_order',
+        orderId,
+      }),
+      keepalive: true,
+    }).catch(() => null)
+    pulseTelegram('heavy')
+    showToast(tr('Order deleted'))
+  }
+
+  const replyToTicket = (ticketId: string) => {
+    const text = (ticketReplyTexts[ticketId] ?? '').trim()
+    if (!text) {
+      showToast(tr('Write a reply first'))
+      return
+    }
+    setState((prev) => ({
+      ...prev,
+      tickets: prev.tickets.map((ticket) =>
+        ticket.id !== ticketId
+          ? ticket
+          : {
+              ...ticket,
+              status: 'pending' as const,
+              lastMessageAt: new Date().toISOString(),
+              messages: [
+                ...ticket.messages,
+                {
+                  id: makeId('msg'),
+                  from: 'support' as const,
+                  text,
+                  timestamp: new Date().toISOString(),
+                },
+              ],
+            }
+      ),
+    }))
+    setTicketReplyTexts((prev) => ({ ...prev, [ticketId]: '' }))
+    pulseTelegram('medium')
+    showToast(tr('Reply sent'))
+  }
+
+  const closeTicket = (ticketId: string) => {
+    setState((prev) => ({
+      ...prev,
+      tickets: prev.tickets.map((ticket) =>
+        ticket.id === ticketId ? { ...ticket, status: 'resolved' as const } : ticket
+      ),
+    }))
+    showToast(tr('Ticket closed'))
+  }
+
 
   const copyPromoCode = async (code: string) => {
     const success = await copyText(code)
@@ -1470,85 +1779,6 @@ function App() {
     setIsCheckoutPromoPanelOpen(false)
     pulseTelegram('light')
   }
-
-  const renderLanding = () => (
-    <div className="landing-shell">
-      <div className="landing-brand">
-        <h1 className="landing-title">Lian Global</h1>
-        <p className="landing-subtitle">{tr('Digital services without borders')}</p>
-      </div>
-
-      <div className="landing-cards">
-        <button className="landing-card landing-card-vpn" onClick={() => switchScreen('home')}>
-          <div className="landing-card-logo">
-            <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <defs>
-                <radialGradient id="vpn-bg" cx="50%" cy="50%" r="50%">
-                  <stop offset="0%" stopColor="#2a1060"/>
-                  <stop offset="100%" stopColor="#0a0520"/>
-                </radialGradient>
-                <linearGradient id="vpn-gold" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#f5c842"/>
-                  <stop offset="100%" stopColor="#c8960a"/>
-                </linearGradient>
-                <linearGradient id="vpn-L" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#9b59f7"/>
-                  <stop offset="100%" stopColor="#6020c0"/>
-                </linearGradient>
-                <linearGradient id="vpn-wave" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#c89fff"/>
-                  <stop offset="100%" stopColor="#7030d0"/>
-                </linearGradient>
-              </defs>
-              <circle cx="60" cy="60" r="56" fill="url(#vpn-bg)" stroke="url(#vpn-gold)" strokeWidth="2"/>
-              <circle cx="60" cy="60" r="50" fill="none" stroke="url(#vpn-gold)" strokeWidth="0.8" opacity="0.4"/>
-              <path d="M36 34 L36 82 L60 82" stroke="url(#vpn-L)" strokeWidth="10" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M57 72 Q68 58 79 62 Q88 65 84 76 Q79 86 68 83 Q58 80 57 72Z" fill="url(#vpn-wave)"/>
-            </svg>
-          </div>
-          <div className="landing-card-label">VPN SERVICES</div>
-          <div className="landing-card-tap">{tr('TAP TO ENTER')}</div>
-        </button>
-
-        <button className="landing-card landing-card-exchange" onClick={() => switchScreen('home')}>
-          <div className="landing-card-logo">
-            <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <defs>
-                <radialGradient id="ex-bg" cx="50%" cy="50%" r="60%">
-                  <stop offset="0%" stopColor="#1a0a40"/>
-                  <stop offset="100%" stopColor="#060314"/>
-                </radialGradient>
-                <linearGradient id="ex-gold" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#f5c842"/>
-                  <stop offset="100%" stopColor="#c8960a"/>
-                </linearGradient>
-                <linearGradient id="ex-purple" x1="0%" y1="100%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="#6020c0"/>
-                  <stop offset="100%" stopColor="#9b59f7"/>
-                </linearGradient>
-              </defs>
-              <rect width="120" height="120" rx="14" fill="url(#ex-bg)"/>
-              <circle cx="60" cy="55" r="26" stroke="url(#ex-purple)" strokeWidth="2.5" fill="none"/>
-              <path d="M46 55 L74 55 M60 41 L60 69" stroke="url(#ex-purple)" strokeWidth="1.8" opacity="0.5"/>
-              <text x="60" y="62" textAnchor="middle" fill="url(#ex-gold)" fontSize="22" fontWeight="bold" fontFamily="sans-serif">L</text>
-              <path d="M22 30 Q60 16 98 30" stroke="url(#ex-gold)" strokeWidth="3" fill="none" strokeLinecap="round"/>
-              <path d="M98 80 Q60 94 22 80" stroke="url(#ex-purple)" strokeWidth="3" fill="none" strokeLinecap="round"/>
-              <polygon points="94,22 98,30 88,28" fill="url(#ex-gold)"/>
-              <polygon points="26,88 22,80 32,82" fill="url(#ex-purple)"/>
-              <circle cx="40" cy="76" r="9" fill="#0a0520" stroke="url(#ex-purple)" strokeWidth="1.5"/>
-              <text x="40" y="80" textAnchor="middle" fill="#f5c842" fontSize="10" fontWeight="bold">₿</text>
-              <circle cx="80" cy="34" r="9" fill="#0a0520" stroke="url(#ex-gold)" strokeWidth="1.5"/>
-              <text x="80" y="38" textAnchor="middle" fill="#f5c842" fontSize="10" fontWeight="bold">$</text>
-            </svg>
-          </div>
-          <div className="landing-card-label">EXCHANGE SERVICES</div>
-          <div className="landing-card-tap">{tr('TAP TO ENTER')}</div>
-        </button>
-      </div>
-
-      <p className="landing-footer">{tr('Fast delivery, security, and 24h support')}</p>
-    </div>
-  )
 
   const renderHome = () => (
     <>
@@ -1578,11 +1808,7 @@ function App() {
 
       <section className="content-section">
         <SectionHeader
-          eyebrow={tr('Plans')}
-          title={tr('Featured subscription cards')}
-          subtitle={tr(
-            'These cards can be promoted on the home feed the same way as the reference screenshot.',
-          )}
+          title={tr('سرویس‌های پیشنهادی')}
         />
 
         <div className="plan-grid">
@@ -1707,9 +1933,8 @@ function App() {
     <>
       <section className="content-section">
         <SectionHeader
-          eyebrow={tr('Delivery')}
-          title={tr('Configs, renewals, and upgrades')}
-          subtitle={tr('Everything the customer needs after payment lives in this tab.')}
+          eyebrow=""
+          title={tr('My services')}
         />
 
         <div className="order-card-list">
@@ -1730,8 +1955,10 @@ function App() {
                   formatNumber={formatNumber}
                   daysLeft={daysLeft}
                   uptimeLabel={uptimeLabel}
-                  onCopy={linkedService ? () => copyConfig(linkedService) : undefined}
+                  onCopy={linkedService?.configCode ? () => copyConfig(linkedService) : undefined}
                   onDownload={linkedService ? () => downloadConfig(linkedService) : undefined}
+                  onCopyCredentials={linkedService?.vpnUsername ? () => copyVpnCredentials(linkedService) : undefined}
+                  onDownloadOvpn={linkedService?.ovpnFileContent ? () => downloadOvpnFile(linkedService) : undefined}
                   onCopyPaymentValue={copyPaymentDetail}
                   onUploadReceipt={(file) => void applyOrderReceipt(order.id, file)}
                   onRenew={
@@ -1740,13 +1967,14 @@ function App() {
                       : undefined
                   }
                   onUpgrade={linkedService ? () => openUpgrade(linkedService) : undefined}
+                  onCancel={order.status === 'processing' ? () => cancelOrder(order.id) : undefined}
                 />
               )
             })
           ) : (
             <div className="empty-card">
               <h3>{tr('Order history')}</h3>
-              <p>{tr('Use the Plans tab to simulate the purchase flow and auto-delivery.')}</p>
+              <p>{tr('No orders yet')}</p>
               <button className="primary-button" onClick={() => switchScreen('plans')}>
                 {tr('Browse plans')}
               </button>
@@ -1787,7 +2015,7 @@ function App() {
             />
             <MetricTile
               label={tr('Total paid')}
-              value={formatCompactValue(revenue)}
+              value={formatCompactValue(totalSpent)}
               icon={<WalletIcon />}
               iconOnly
               compact
@@ -1813,9 +2041,8 @@ function App() {
     <>
       <section className="content-section">
         <SectionHeader
-          eyebrow={tr('Support')}
-          title={tr('Tickets, guides, and FAQs')}
-          subtitle={tr('This tab combines self-serve setup with direct support escalation.')}
+          eyebrow=""
+          title={tr('Support')}
         />
 
         <div className="grid-two">
@@ -1887,9 +2114,8 @@ function App() {
 
       <section className="content-section">
         <SectionHeader
-          eyebrow={tr('Queue')}
-          title={tr('Recent tickets')}
-          subtitle={tr('Open and pending issues stay visible to both the customer and admin.')}
+          eyebrow=""
+          title={tr('My tickets')}
         />
 
         <div className="ticket-list">
@@ -1927,9 +2153,8 @@ function App() {
 
       <section className="content-section">
         <SectionHeader
-          eyebrow={tr('FAQ')}
-          title={tr('Answer the most common questions')}
-          subtitle={tr('Search in the global field and the FAQ list reacts instantly.')}
+          eyebrow=""
+          title={tr('FAQ')}
         />
 
         <div className="faq-list">
@@ -1966,56 +2191,7 @@ function App() {
             </div>
           </div>
 
-          <div className="mini-stats">
-            <MetricTile label={tr('Wallet')} value={formatMoney(state.profile.walletCredit)} compact />
-            <MetricTile label={tr('Referrals')} value={formatNumber(state.profile.referrals)} compact />
-            <MetricTile label={tr('Preferred route')} value={tr(state.profile.preferredRegion)} compact />
-          </div>
-        </div>
-      </section>
 
-      <section className="content-section">
-        <SectionHeader
-          eyebrow={tr('Growth')}
-          title={tr('Promos, referrals, and loyalty')}
-          subtitle={tr('Useful sales levers that keep this kind of VPN mini app sticky.')}
-        />
-
-        <div className="grid-two">
-          <div className="content-card">
-            <p className="eyebrow">{tr('Referral')}</p>
-            <h3>{state.profile.referralCode}</h3>
-            <p className="muted-copy">
-              {tr(
-                'Share the Telegram deep link and reward wallet credit on successful purchases.',
-              )}
-            </p>
-            <button className="ghost-button" onClick={copyReferral}>
-              {tr('Copy referral link')}
-            </button>
-          </div>
-
-          <div className="content-card">
-            <p className="eyebrow">{tr('Live promo codes')}</p>
-            <div className="coupon-tags">
-              {featuredCampaigns.map((campaign) => (
-                <button
-                  key={campaign.id}
-                  className="campaign-pill"
-                  onClick={async () => {
-                    const success = await copyText(campaign.code)
-                    showToast(
-                      success
-                        ? copiedMessage(campaign.code)
-                        : tr('Clipboard is not available'),
-                    )
-                  }}
-                >
-                  {campaign.code}
-                </button>
-              ))}
-            </div>
-          </div>
         </div>
       </section>
 
@@ -2023,12 +2199,11 @@ function App() {
         <SectionHeader
           eyebrow={tr('Orders')}
           title={tr('Lifetime value view')}
-          subtitle={tr('A compact summary of what this user has already purchased.')}
         />
 
         <div className="customer-row card-frame">
           <strong>{tr('Total paid')}</strong>
-          <span>{formatMoney(paidLifetimeValue(state.orders))}</span>
+          <span>{formatMoney(totalSpent)}</span>
         </div>
       </section>
 
@@ -2061,6 +2236,35 @@ function App() {
           <MetricTile label={tr('Open tickets')} value={formatNumber(openTicketCount)} />
           <MetricTile label={tr('Avg latency')} value={`${formatNumber(avgPing)}ms`} />
         </div>
+        <button
+          className="primary-button full-width"
+          style={{ marginTop: 12 }}
+          onClick={async () => {
+            try {
+              const res = await fetch(storeUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  plans: state.plans,
+                  campaigns: state.campaigns,
+                  notices: state.notices,
+                  faqs: state.faqs,
+                  servers: state.servers,
+                }),
+              })
+              if (res.ok) {
+                showToast(tr('Data synced to server for all users'))
+                pulseTelegram('medium')
+              } else {
+                showToast(tr('Sync failed — check server'))
+              }
+            } catch {
+              showToast(tr('Sync failed — check server'))
+            }
+          }}
+        >
+          ☁️ {tr('Sync to server (publish to all users)')}
+        </button>
       </section>
 
       <section className="content-section">
@@ -2068,6 +2272,22 @@ function App() {
           eyebrow={tr('Orders')}
           title={tr('All orders')}
         />
+        {redisConnected === false && (
+          <div style={{
+            background: 'rgba(239,68,68,0.15)',
+            border: '1px solid rgba(239,68,68,0.4)',
+            borderRadius: 10,
+            padding: '10px 14px',
+            marginBottom: 12,
+            fontSize: 13,
+            lineHeight: 1.5,
+            color: '#fca5a5',
+          }}>
+            ⚠️ <strong>Redis متصل نیست!</strong> سفارشات فقط در حافظه موقت ذخیره می‌شوند و با ریستارت سرور از بین می‌روند.
+            <br />
+            در داشبورد Vercel → Settings → Environment Variables مقدار <code style={{ background: 'rgba(0,0,0,0.3)', padding: '1px 5px', borderRadius: 4 }}>REDIS_URL</code> را تنظیم کنید.
+          </div>
+        )}
         <div className="admin-stack">
           {state.orders.length ? (
             state.orders.map((order) => {
@@ -2084,7 +2304,7 @@ function App() {
                       </p>
                     </div>
                     <div className="admin-plan-summary-side">
-                      <span className={`plan-meta-chip ${order.status === 'paid' ? '' : 'chip-amber'}`}>
+                      <span className={`plan-meta-chip ${order.status === 'paid' ? '' : order.status === 'cancelled' || order.status === 'rejected' ? 'chip-neutral' : 'chip-amber'}`}>
                         {tr(order.status)}
                       </span>
                       <span className="ticket-toggle order-toggle" aria-hidden="true">
@@ -2123,12 +2343,161 @@ function App() {
                       <p className="muted-copy">{tr('Receipt pending')}</p>
                     ) : null}
                     {order.status === 'processing' ? (
-                      <button
-                        className="primary-button full-width"
-                        onClick={() => updateOrderField(order.id, 'status', 'paid')}
-                      >
-                        {tr('Mark as paid')}
-                      </button>
+                      <div className="admin-delivery-box">
+                        <p className="admin-delivery-label">📦 ارسال سرویس به کاربر</p>
+
+                        <label className="field-label">
+                          <span>V2Ray — کانفیگ یا لینک اشتراک</span>
+                          <textarea
+                            className="field field-area admin-compact-area"
+                            placeholder="vless://... یا vmess://... یا لینک اشتراک"
+                            value={getDeliveryDraft(order.id).configCode}
+                            onChange={(e) => setDeliveryField(order.id, 'configCode', e.target.value)}
+                          />
+                        </label>
+
+                        <label className="field-label">
+                          <span>OpenVPN — نام کاربری</span>
+                          <input
+                            className="field"
+                            placeholder="username"
+                            value={getDeliveryDraft(order.id).vpnUsername}
+                            onChange={(e) => setDeliveryField(order.id, 'vpnUsername', e.target.value)}
+                          />
+                        </label>
+
+                        <label className="field-label">
+                          <span>OpenVPN — رمز عبور</span>
+                          <input
+                            className="field"
+                            placeholder="password"
+                            value={getDeliveryDraft(order.id).vpnPassword}
+                            onChange={(e) => setDeliveryField(order.id, 'vpnPassword', e.target.value)}
+                          />
+                        </label>
+
+                        <label className="field-label">
+                          <span>OpenVPN — فایل .ovpn (متن فایل را paste کن)</span>
+                          <textarea
+                            className="field field-area admin-compact-area"
+                            placeholder="محتوای فایل .ovpn را اینجا paste کن"
+                            value={getDeliveryDraft(order.id).ovpnFileContent}
+                            onChange={(e) => setDeliveryField(order.id, 'ovpnFileContent', e.target.value)}
+                          />
+                        </label>
+
+                        <button
+                          className="primary-button full-width"
+                          onClick={() => confirmDelivery(order.id)}
+                        >
+                          ✅ تایید پرداخت و ارسال سرویس
+                        </button>
+                        <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                          <button
+                            className="ghost-button full-width"
+                            style={{ color: '#f87171' }}
+                            onClick={() => rejectOrder(order.id)}
+                          >
+                            ❌ {tr('Reject order')}
+                          </button>
+                          <button
+                            className="ghost-button full-width"
+                            style={{ color: '#f87171' }}
+                            onClick={() => deleteOrder(order.id)}
+                          >
+                            🗑 {tr('Delete order')}
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
+                    {order.status === 'paid' && linked ? (
+                      <div className="admin-delivery-box">
+                        <p className="admin-delivery-label">✅ سرویس تحویل داده شده</p>
+
+                        {linked.configCode ? (
+                          <div className="admin-delivered-row">
+                            <span className="admin-delivered-type">V2Ray</span>
+                            <code className="admin-config-code">{linked.configCode.slice(0, 50)}{linked.configCode.length > 50 ? '…' : ''}</code>
+                            <button className="ghost-button small" onClick={async () => {
+                              const ok = await copyText(linked.configCode)
+                              showToast(ok ? '✅ کانفیگ کپی شد' : tr('Clipboard is not available'))
+                            }}>📋</button>
+                          </div>
+                        ) : null}
+
+                        {linked.vpnUsername ? (
+                          <div className="admin-delivered-row">
+                            <span className="admin-delivered-type">OpenVPN</span>
+                            <span>{linked.vpnUsername} / {linked.vpnPassword}</span>
+                            <button className="ghost-button small" onClick={async () => {
+                              const ok = await copyText(`${linked.vpnUsername}\n${linked.vpnPassword}`)
+                              showToast(ok ? '✅ یوزر/پسورد کپی شد' : tr('Clipboard is not available'))
+                            }}>📋</button>
+                          </div>
+                        ) : null}
+
+                        {linked.ovpnFileContent ? (
+                          <div className="admin-delivered-row">
+                            <span className="admin-delivered-type">.ovpn</span>
+                            <span className="muted-copy">{linked.ovpnFileName ?? 'config.ovpn'}</span>
+                            <button className="ghost-button small" onClick={() => {
+                              downloadTextFile(linked.ovpnFileName ?? 'lian.ovpn', linked.ovpnFileContent ?? '')
+                              showToast('فایل دانلود شد')
+                            }}>⬇</button>
+                          </div>
+                        ) : null}
+
+                        <p className="admin-delivery-label" style={{ marginTop: 8 }}>ویرایش و ارسال مجدد</p>
+                        <label className="field-label">
+                          <span>V2Ray — کانفیگ</span>
+                          <textarea
+                            className="field field-area admin-compact-area"
+                            placeholder="vless://..."
+                            value={getDeliveryDraft(order.id).configCode || linked.configCode}
+                            onChange={(e) => setDeliveryField(order.id, 'configCode', e.target.value)}
+                          />
+                        </label>
+                        <label className="field-label">
+                          <span>OpenVPN یوزر</span>
+                          <input className="field" placeholder="username"
+                            value={getDeliveryDraft(order.id).vpnUsername || linked.vpnUsername || ''}
+                            onChange={(e) => setDeliveryField(order.id, 'vpnUsername', e.target.value)} />
+                        </label>
+                        <label className="field-label">
+                          <span>OpenVPN پسورد</span>
+                          <input className="field" placeholder="password"
+                            value={getDeliveryDraft(order.id).vpnPassword || linked.vpnPassword || ''}
+                            onChange={(e) => setDeliveryField(order.id, 'vpnPassword', e.target.value)} />
+                        </label>
+                        <button className="ghost-button full-width" style={{ marginTop: 4 }}
+                          onClick={() => confirmDelivery(order.id)}>
+                          🔄 بروزرسانی سرویس
+                        </button>
+                      </div>
+                    ) : null}
+                    {order.status === 'cancelled' ? (
+                      <div className="admin-delivery-box">
+                        <p className="admin-delivery-label" style={{ color: '#f87171' }}>🚫 {tr('Order was cancelled by user')}</p>
+                        <button
+                          className="ghost-button full-width"
+                          style={{ color: '#f87171', marginTop: 4 }}
+                          onClick={() => deleteOrder(order.id)}
+                        >
+                          🗑 {tr('Delete order')}
+                        </button>
+                      </div>
+                    ) : null}
+                    {order.status === 'rejected' ? (
+                      <div className="admin-delivery-box">
+                        <p className="admin-delivery-label" style={{ color: '#f87171' }}>❌ {tr('Order rejected')}</p>
+                        <button
+                          className="ghost-button full-width"
+                          style={{ color: '#f87171', marginTop: 4 }}
+                          onClick={() => deleteOrder(order.id)}
+                        >
+                          🗑 {tr('Delete order')}
+                        </button>
+                      </div>
                     ) : null}
                   </div>
                 </details>
@@ -2829,6 +3198,7 @@ function App() {
                   <input
                     className="field"
                     value={joinCsv(newPlanDraft.protocols)}
+                    placeholder="V2Ray (VLESS), OpenVPN"
                     onChange={(event) =>
                       updateNewPlanField('protocols', splitCsv(event.target.value))
                     }
@@ -3049,6 +3419,74 @@ function App() {
 
       <section className="content-section">
         <SectionHeader
+          eyebrow={tr('Tickets')}
+          title={tr('Support tickets')}
+        />
+        <div className="admin-stack">
+          {state.tickets.length ? (
+            state.tickets.map((ticket) => (
+              <details key={ticket.id} className="admin-card admin-plan-card admin-editor-card">
+                <summary className="admin-plan-summary admin-editor-summary">
+                  <div className="admin-plan-copy admin-editor-copy">
+                    <strong>{tr(ticket.title)}</strong>
+                    <p>{tr(ticket.category)} • {formatDate(ticket.lastMessageAt)}</p>
+                  </div>
+                  <div className="admin-plan-summary-side">
+                    <span className={`plan-meta-chip ${ticket.status === 'resolved' ? '' : 'chip-amber'}`}>
+                      {tr(ticket.status)}
+                    </span>
+                    <span className="ticket-toggle order-toggle" aria-hidden="true">
+                      <ChevronIcon />
+                    </span>
+                  </div>
+                </summary>
+                <div className="admin-plan-body admin-editor-body">
+                  <div className="admin-ticket-thread">
+                    {ticket.messages.map((msg) => (
+                      <div key={msg.id} className={`admin-ticket-msg admin-ticket-${msg.from}`}>
+                        <span className="admin-ticket-from">
+                          {msg.from === 'support' ? '🛟 Support' : '👤 User'}
+                        </span>
+                        <p className="admin-ticket-text">{msg.text}</p>
+                        <span className="admin-ticket-time">{formatDate(msg.timestamp)}</span>
+                      </div>
+                    ))}
+                  </div>
+                  {ticket.status !== 'resolved' ? (
+                    <div className="admin-reply-box">
+                      <textarea
+                        className="field field-area admin-compact-area"
+                        placeholder={tr('Write reply...')}
+                        value={ticketReplyTexts[ticket.id] ?? ''}
+                        onChange={(e) =>
+                          setTicketReplyTexts((prev) => ({ ...prev, [ticket.id]: e.target.value }))
+                        }
+                      />
+                      <div className="admin-reply-actions">
+                        <button className="primary-button" onClick={() => replyToTicket(ticket.id)}>
+                          {tr('Send reply')}
+                        </button>
+                        <button className="ghost-button" onClick={() => closeTicket(ticket.id)}>
+                          {tr('Close ticket')}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="muted-copy" style={{ padding: '8px 0' }}>{tr('Ticket resolved')}</p>
+                  )}
+                </div>
+              </details>
+            ))
+          ) : (
+            <div className="empty-card admin-editor-empty">
+              <p>{tr('No tickets yet')}</p>
+            </div>
+          )}
+        </div>
+      </section>
+
+      <section className="content-section">
+        <SectionHeader
           eyebrow={tr('FAQ')}
           title={tr('Edit FAQ entries')}
         />
@@ -3166,7 +3604,7 @@ function App() {
       </div>
 
       <header className="masthead">
-        <div>
+<div>
           <h2>Lian</h2>
         </div>
         <button className="ghost-button small" onClick={startTrial}>
@@ -3175,7 +3613,6 @@ function App() {
       </header>
 
       <main className="screen-body">
-        {screen === 'landing' && renderLanding()}
         {screen === 'home' && renderHome()}
         {screen === 'plans' && renderPlans()}
         {screen === 'services' && renderServices()}
@@ -3441,9 +3878,7 @@ function App() {
             </div>
 
             <button className="primary-button full-width" onClick={confirmCheckout}>
-              {paymentMethod === 'card' || paymentMethod === 'crypto'
-                ? tr('Submit payment request')
-                : tr('Confirm payment')}
+              {tr('Submit payment request')}
             </button>
           </div>
         </div>
@@ -3455,7 +3890,7 @@ function App() {
 }
 
 type SectionHeaderProps = {
-  eyebrow: string
+  eyebrow?: string
   title: string
   subtitle?: string
   action?: ReactNode
@@ -3465,7 +3900,7 @@ function SectionHeader({ eyebrow, title, subtitle, action }: SectionHeaderProps)
   return (
     <div className="section-header">
       <div>
-        <p className="eyebrow">{eyebrow}</p>
+        {eyebrow ? <p className="eyebrow">{eyebrow}</p> : null}
         <h2>{title}</h2>
         {subtitle ? <p className="muted-copy">{subtitle}</p> : null}
       </div>
@@ -3609,6 +4044,9 @@ type OrderCardProps = {
   onUploadReceipt?: (file: File | null) => void
   onRenew?: () => void
   onUpgrade?: () => void
+  onCopyCredentials?: () => void
+  onDownloadOvpn?: () => void
+  onCancel?: () => void
 }
 
 function OrderCard({
@@ -3626,6 +4064,9 @@ function OrderCard({
   onUploadReceipt,
   onRenew,
   onUpgrade,
+  onCopyCredentials,
+  onDownloadOvpn,
+  onCancel,
 }: OrderCardProps) {
   const compactConfig = service
     ? service.configCode.length > 36
@@ -3641,7 +4082,7 @@ function OrderCard({
       <summary className="order-card-head order-summary">
         <div className="order-card-copy">
           <div className="stat-line">
-            <StatusPill tone={order.status === 'paid' ? 'lime' : 'amber'}>
+            <StatusPill tone={order.status === 'paid' ? 'lime' : order.status === 'cancelled' || order.status === 'rejected' ? 'neutral' : 'amber'}>
               {tr(order.status)}
             </StatusPill>
             <span>{tr(order.kind)}</span>
@@ -3696,25 +4137,44 @@ function OrderCard({
             <span className="plan-meta-chip">{uptimeLabel(service.uptime)}</span>
           </div>
 
-          <div className="config-shell order-card-config">
-            <div className="service-config-main">
-              <span>{tr('Config')}</span>
-              <code>{compactConfig}</code>
+          {service.configCode && compactConfig ? (
+            <div className="config-shell order-card-config">
+              <div className="service-config-main">
+                <span>V2Ray</span>
+                <code>{compactConfig}</code>
+              </div>
+              <div className="service-config-actions">
+                {onCopy ? (
+                  <button className="ghost-button small" onClick={onCopy}>
+                    {tr('Copy')}
+                  </button>
+                ) : null}
+                {onDownload ? (
+                  <button className="ghost-button small" onClick={onDownload}>
+                    {tr('Download')}
+                  </button>
+                ) : null}
+              </div>
             </div>
-            <div className="service-config-actions">
-              {onCopy ? (
-                <button className="ghost-button small" onClick={onCopy}>
-                  {tr('Copy')}
-                </button>
-              ) : null}
-              {onDownload ? (
-                <button className="ghost-button small" onClick={onDownload}>
-                  {tr('Download')}
-                </button>
-              ) : null}
-            </div>
-          </div>
+          ) : null}
 
+          {(onCopyCredentials || onDownloadOvpn) ? (
+            <div className="service-vpn-delivery">
+              <p className="service-vpn-title">🔐 OpenVPN</p>
+              <div className="service-vpn-actions">
+                {onCopyCredentials ? (
+                  <button className="primary-button" onClick={onCopyCredentials}>
+                    📋 یوزر / پسورد
+                  </button>
+                ) : null}
+                {onDownloadOvpn ? (
+                  <button className="ghost-button" onClick={onDownloadOvpn}>
+                    ⬇ دانلود .ovpn
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
           <div className="service-actions order-card-actions">
             {onRenew ? (
               <button className="primary-button" onClick={onRenew}>
@@ -3856,6 +4316,23 @@ function OrderCard({
                 <span className="plan-meta-chip">{tr('Receipt pending')}</span>
               </div>
             )}
+          </div>
+          {onCancel ? (
+            <button
+              className="ghost-button full-width"
+              style={{ color: '#f87171', marginTop: 8 }}
+              onClick={onCancel}
+            >
+              ❌ {tr('Cancel order')}
+            </button>
+          ) : null}
+        </div>
+      ) : order.status === 'cancelled' || order.status === 'rejected' ? (
+        <div className="order-card-body">
+          <div className="order-card-meta">
+            <span className="plan-meta-chip" style={{ opacity: 0.7 }}>
+              {order.status === 'cancelled' ? tr('Order cancelled') : tr('Order rejected')}
+            </span>
           </div>
         </div>
       ) : (

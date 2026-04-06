@@ -2108,6 +2108,13 @@
   border: 1px solid rgba(245, 166, 35, 0.25);
 }
 
+.chip-neutral {
+  background: rgba(160, 160, 160, 0.15);
+  color: #999;
+  border: 1px solid rgba(160, 160, 160, 0.25);
+  text-decoration: line-through;
+}
+
 /* ─── Admin Delete Button ─────────────────────────────────────── */
 .admin-delete-btn {
   color: #ff6b6b !important;
@@ -2117,4 +2124,710 @@
 
 .admin-delete-btn:hover {
   background: rgba(255, 107, 107, 0.08) !important;
+}
+
+/* ─── Exchange Screen ─────────────────────────────────────────── */
+.exchange-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100svh;
+  background: #07040f;
+  overflow-y: auto;
+  padding-bottom: 32px;
+}
+
+/* Header */
+.exchange-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: rgba(7, 4, 15, 0.85);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(155, 89, 247, 0.12);
+}
+
+.exchange-back-btn {
+  background: rgba(155, 89, 247, 0.12);
+  border: 1px solid rgba(155, 89, 247, 0.25);
+  border-radius: 10px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #9b59f7;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.exchange-back-btn:active { background: rgba(155, 89, 247, 0.22); }
+
+.exchange-header-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.exchange-header-title {
+  font-weight: 700;
+  font-size: 0.95rem;
+  background: linear-gradient(135deg, #f5c842, #c8960a);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.exchange-header-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #9b59f7;
+}
+.exchange-header-live {
+  font-size: 0.65rem;
+  color: #4caf87;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  background: rgba(76, 175, 135, 0.12);
+  border: 1px solid rgba(76, 175, 135, 0.25);
+  padding: 2px 7px;
+  border-radius: 20px;
+}
+.exchange-header-spacer { width: 36px; }
+
+/* Hero */
+.exchange-hero {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 36px 20px 28px;
+  overflow: hidden;
+}
+.exchange-hero-orb {
+  position: absolute;
+  width: 260px;
+  height: 260px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(96, 32, 192, 0.3) 0%, transparent 70%);
+  top: -60px;
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: none;
+  animation: orbPulse 4s ease-in-out infinite;
+}
+.exchange-hero-orb2 {
+  width: 180px;
+  height: 180px;
+  background: radial-gradient(circle, rgba(245, 200, 66, 0.12) 0%, transparent 70%);
+  top: 20px;
+  animation: orbPulse 4s ease-in-out infinite 2s;
+}
+@keyframes orbPulse {
+  0%, 100% { opacity: 0.6; transform: translateX(-50%) scale(1); }
+  50% { opacity: 1; transform: translateX(-50%) scale(1.08); }
+}
+.exchange-hero-logo {
+  width: 110px;
+  height: 110px;
+  position: relative;
+  z-index: 1;
+  filter: drop-shadow(0 0 24px rgba(155, 89, 247, 0.5));
+  animation: logoPulse 3s ease-in-out infinite;
+}
+@keyframes logoPulse {
+  0%, 100% { filter: drop-shadow(0 0 18px rgba(155, 89, 247, 0.4)); }
+  50% { filter: drop-shadow(0 0 36px rgba(245, 200, 66, 0.45)); }
+}
+.exchange-hero-title {
+  font-size: 1.8rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  background: linear-gradient(135deg, #f5c842 0%, #9b59f7 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 16px 0 4px;
+  position: relative;
+  z-index: 1;
+}
+.exchange-hero-sub {
+  color: rgba(255,255,255,0.45);
+  font-size: 0.82rem;
+  letter-spacing: 0.06em;
+  position: relative;
+  z-index: 1;
+}
+
+/* Rates */
+.exchange-rates-section {
+  padding: 0 16px 12px;
+}
+.exchange-rates-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.exchange-rates-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: rgba(255,255,255,0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.exchange-rates-badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #26a17b;
+  background: rgba(38, 161, 123, 0.1);
+  border: 1px solid rgba(38, 161, 123, 0.25);
+  padding: 2px 8px;
+  border-radius: 20px;
+  letter-spacing: 0.06em;
+}
+.exchange-rate-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.exchange-rate-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: rgba(255,255,255,0.035);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 14px;
+  padding: 13px 15px;
+  backdrop-filter: blur(8px);
+  transition: border-color 0.15s;
+}
+.exchange-rate-card:hover {
+  border-color: rgba(155, 89, 247, 0.2);
+}
+.exchange-rate-icon {
+  font-size: 1.3rem;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255,255,255,0.05);
+  border-radius: 10px;
+  flex-shrink: 0;
+  font-weight: 700;
+}
+.exchange-rate-info {
+  flex: 1;
+}
+.exchange-rate-pair {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: rgba(255,255,255,0.7);
+  display: block;
+  margin-bottom: 3px;
+}
+.exchange-rate-prices {
+  display: flex;
+  gap: 10px;
+}
+.exchange-rate-buy,
+.exchange-rate-sell {
+  font-size: 0.72rem;
+  color: rgba(255,255,255,0.4);
+}
+.exchange-rate-buy strong { color: #4caf87; }
+.exchange-rate-sell strong { color: #f47b7b; }
+.exchange-rate-trend {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #4caf87;
+  background: rgba(76, 175, 135, 0.1);
+  border: 1px solid rgba(76, 175, 135, 0.2);
+  padding: 2px 8px;
+  border-radius: 20px;
+}
+
+/* Actions */
+.exchange-actions-section {
+  padding: 16px 16px 8px;
+}
+.exchange-action-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+.exchange-action-btn {
+  background: rgba(155, 89, 247, 0.07);
+  border: 1px solid rgba(155, 89, 247, 0.18);
+  border-radius: 14px;
+  padding: 14px 6px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.exchange-action-btn:active {
+  transform: scale(0.94);
+  background: rgba(155, 89, 247, 0.14);
+}
+.exchange-action-icon {
+  font-size: 1.3rem;
+  line-height: 1;
+}
+.exchange-action-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: rgba(255,255,255,0.75);
+}
+.exchange-action-sub {
+  font-size: 0.6rem;
+  color: rgba(255,255,255,0.3);
+}
+
+/* Order form */
+.exchange-order-section {
+  padding: 16px 16px 0;
+}
+.exchange-section-title {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: rgba(255,255,255,0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 12px;
+}
+.exchange-order-card {
+  background: rgba(255,255,255,0.035);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 18px;
+  overflow: hidden;
+}
+.exchange-order-tabs {
+  display: flex;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.exchange-tab {
+  flex: 1;
+  padding: 13px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: rgba(255,255,255,0.35);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.exchange-tab-active {
+  color: #f5c842;
+  background: rgba(245, 200, 66, 0.06);
+  border-bottom: 2px solid #f5c842;
+}
+.exchange-order-form {
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.exchange-field-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.exchange-field-label {
+  font-size: 0.72rem;
+  color: rgba(255,255,255,0.4);
+  font-weight: 500;
+}
+.exchange-field-row {
+  display: flex;
+  align-items: center;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: border-color 0.15s;
+}
+.exchange-field-row:focus-within {
+  border-color: rgba(155, 89, 247, 0.4);
+}
+.exchange-field {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  padding: 12px 14px;
+  font-size: 1rem;
+  color: #fff;
+  font-weight: 500;
+}
+.exchange-field::placeholder { color: rgba(255,255,255,0.2); }
+.exchange-field-unit {
+  padding: 0 14px 0 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #9b59f7;
+}
+.exchange-submit-btn {
+  width: 100%;
+  padding: 14px;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  background: linear-gradient(135deg, #9b59f7 0%, #6020c0 100%);
+  color: #fff;
+  letter-spacing: 0.02em;
+  transition: opacity 0.15s, transform 0.15s;
+  box-shadow: 0 4px 20px rgba(96, 32, 192, 0.4);
+}
+.exchange-submit-btn:active {
+  opacity: 0.85;
+  transform: scale(0.98);
+}
+
+/* Support bar */
+.exchange-support-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 20px 16px 0;
+  padding: 12px;
+  background: rgba(155, 89, 247, 0.06);
+  border: 1px solid rgba(155, 89, 247, 0.15);
+  border-radius: 12px;
+  font-size: 0.8rem;
+  color: rgba(255,255,255,0.5);
+}
+
+/* ─── Coming Soon (Exchange) ──────────────────────────────────── */
+.exchange-coming {
+  justify-content: flex-start;
+}
+
+.coming-soon-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 24px 48px;
+  position: relative;
+  overflow: hidden;
+  min-height: calc(100svh - 65px);
+}
+
+.coming-soon-orb {
+  position: absolute;
+  width: 280px;
+  height: 280px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(96, 32, 192, 0.28) 0%, transparent 70%);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -60%);
+  pointer-events: none;
+  animation: orbPulse 4s ease-in-out infinite;
+}
+.coming-soon-orb2 {
+  width: 200px;
+  height: 200px;
+  background: radial-gradient(circle, rgba(245, 200, 66, 0.1) 0%, transparent 70%);
+  animation: orbPulse 4s ease-in-out infinite 2s;
+}
+
+.coming-soon-logo {
+  width: 120px;
+  height: 120px;
+  position: relative;
+  z-index: 1;
+  filter: drop-shadow(0 0 24px rgba(155, 89, 247, 0.5));
+  animation: logoPulse 3s ease-in-out infinite;
+  margin-bottom: 24px;
+}
+
+.coming-soon-title {
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  background: linear-gradient(135deg, #f5c842 0%, #9b59f7 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 0 0 14px;
+  position: relative;
+  z-index: 1;
+}
+
+.coming-soon-fa {
+  font-size: 0.95rem;
+  color: rgba(255,255,255,0.65);
+  text-align: center;
+  margin: 0 0 6px;
+  position: relative;
+  z-index: 1;
+  direction: rtl;
+}
+
+.coming-soon-en {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: #f5c842;
+  opacity: 0.7;
+  margin: 0 0 28px;
+  position: relative;
+  z-index: 1;
+}
+
+.coming-soon-features {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 28px;
+  position: relative;
+  z-index: 1;
+}
+
+.coming-soon-tag {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: rgba(255,255,255,0.4);
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  padding: 4px 12px;
+  border-radius: 20px;
+  letter-spacing: 0.04em;
+}
+
+.coming-soon-notify {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  color: rgba(255,255,255,0.45);
+  background: rgba(155, 89, 247, 0.07);
+  border: 1px solid rgba(155, 89, 247, 0.15);
+  padding: 12px 20px;
+  border-radius: 12px;
+  position: relative;
+  z-index: 1;
+}
+
+/* ─── VPN Back button in masthead ─────────────────────────────── */
+.masthead-back-btn {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 10px;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255,255,255,0.6);
+  cursor: pointer;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+.masthead-back-btn:active {
+  background: rgba(255,255,255,0.1);
+  color: #fff;
+}
+
+/* ─── Admin Ticket Thread ─────────────────────────────────────── */
+.admin-ticket-thread {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.admin-ticket-msg {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  max-width: 88%;
+}
+
+.admin-ticket-user {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.07);
+  align-self: flex-start;
+}
+
+.admin-ticket-support {
+  background: rgba(96, 32, 192, 0.12);
+  border: 1px solid rgba(155, 89, 247, 0.2);
+  align-self: flex-end;
+}
+
+.admin-ticket-from {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: rgba(255,255,255,0.4);
+  letter-spacing: 0.04em;
+}
+
+.admin-ticket-text {
+  font-size: 0.85rem;
+  color: rgba(255,255,255,0.85);
+  line-height: 1.5;
+  margin: 2px 0;
+}
+
+.admin-ticket-time {
+  font-size: 0.65rem;
+  color: rgba(255,255,255,0.3);
+}
+
+.admin-reply-box {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  padding-top: 12px;
+}
+
+.admin-reply-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.admin-reply-actions .primary-button {
+  flex: 1;
+}
+
+.admin-reply-actions .ghost-button {
+  flex-shrink: 0;
+}
+
+/* ─── Admin Delivery Box ──────────────────────────────────────── */
+.admin-delivery-box {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: rgba(96, 32, 192, 0.07);
+  border: 1px solid rgba(155, 89, 247, 0.2);
+  border-radius: 14px;
+  padding: 14px;
+}
+
+.admin-delivery-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #9b59f7;
+  letter-spacing: 0.03em;
+}
+
+.admin-config-display {
+  background: rgba(0,0,0,0.25);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 10px;
+  padding: 10px 12px;
+  overflow-x: auto;
+}
+
+.admin-config-code {
+  font-family: monospace;
+  font-size: 0.72rem;
+  color: #a8e6b4;
+  word-break: break-all;
+  white-space: pre-wrap;
+}
+
+.admin-delivery-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.admin-delivery-actions .primary-button {
+  flex: 1;
+  font-size: 0.82rem;
+}
+
+.admin-delivery-actions .ghost-button {
+  flex-shrink: 0;
+  font-size: 0.82rem;
+}
+
+/* ─── Service VPN Delivery Card (user) ───────────────────────────── */
+.service-vpn-delivery {
+  background: rgba(96, 32, 192, 0.07);
+  border: 1px solid rgba(155, 89, 247, 0.2);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+}
+
+.service-vpn-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #9b59f7;
+  letter-spacing: 0.04em;
+  margin-bottom: 8px;
+}
+
+.service-vpn-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.service-vpn-actions .primary-button,
+.service-vpn-actions .ghost-button {
+  flex: 1;
+  font-size: 0.8rem;
+  padding: 9px 12px;
+}
+
+/* ─── Admin Delivered Row ────────────────────────────────────────── */
+.admin-delivered-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: rgba(0,0,0,0.2);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 10px;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+}
+
+.admin-delivered-type {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #f5c842;
+  background: rgba(245, 200, 66, 0.1);
+  border: 1px solid rgba(245, 200, 66, 0.2);
+  padding: 2px 8px;
+  border-radius: 20px;
+  flex-shrink: 0;
+  letter-spacing: 0.05em;
+}
+
+.admin-delivered-row code {
+  font-size: 0.7rem;
+  color: #a8e6b4;
+  font-family: monospace;
+  flex: 1;
+  word-break: break-all;
+}
+
+.admin-delivered-row span {
+  font-size: 0.78rem;
+  flex: 1;
+}
+
+.admin-delivered-row .ghost-button.small {
+  flex-shrink: 0;
+  font-size: 0.72rem;
+  padding: 5px 10px;
 }

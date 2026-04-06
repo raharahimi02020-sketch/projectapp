@@ -35,10 +35,19 @@ declare global {
   }
 }
 
-const ADMIN_IDS: number[] = (import.meta.env.VITE_ADMIN_IDS ?? '8461153976')
-  .split(',')
-  .map(Number)
-  .filter(Boolean)
+// Hardcoded admin IDs — both must be listed here AND in VITE_ADMIN_IDS env var
+const HARDCODED_ADMINS = [8461153976, 7302457228]
+
+const ADMIN_IDS: number[] = (() => {
+  const envVal = import.meta.env.VITE_ADMIN_IDS
+  if (envVal) {
+    const parsed = String(envVal).split(',').map((s: string) => Number(s.trim())).filter(Boolean)
+    // Merge env IDs with hardcoded to ensure both always work
+    const merged = [...new Set([...parsed, ...HARDCODED_ADMINS])]
+    return merged
+  }
+  return HARDCODED_ADMINS
+})()
 
 export const getTelegramWebApp = () => window.Telegram?.WebApp
 export const getTelegramUser = () => getTelegramWebApp()?.initDataUnsafe?.user

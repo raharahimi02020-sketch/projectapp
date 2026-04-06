@@ -1,16 +1,13 @@
-export type Screen = 'landing' | 'home' | 'plans' | 'services' | 'support' | 'profile' | 'admin'
+export type Screen = 'home' | 'plans' | 'services' | 'support' | 'profile' | 'admin'
 
 export type PlanCategory =
-  | 'starter'
-  | 'streaming'
-  | 'family'
-  | 'unlimited'
-  | 'business'
+  | 'v2ray'
+  | 'openvpn'
 
 export type ServiceStatus = 'active' | 'trial' | 'expiring' | 'expired'
 export type TicketStatus = 'open' | 'pending' | 'resolved'
 export type ServerStatus = 'online' | 'busy' | 'maintenance'
-export type PaymentMethod = 'card' | 'crypto' | 'wallet'
+export type PaymentMethod = 'card' | 'crypto'
 
 export interface TelegramUserProfile {
   id: number
@@ -67,6 +64,10 @@ export interface UserService {
   orderId: string
   latency: number
   uptime: string
+  vpnUsername?: string
+  vpnPassword?: string
+  ovpnFileContent?: string
+  ovpnFileName?: string
 }
 
 export interface Order {
@@ -74,7 +75,7 @@ export interface Order {
   planId: string
   planName: string
   amount: number
-  status: 'paid' | 'processing'
+  status: 'paid' | 'processing' | 'cancelled' | 'rejected'
   paymentMethod: PaymentMethod
   kind: 'purchase' | 'renew' | 'upgrade' | 'trial'
   createdAt: string
